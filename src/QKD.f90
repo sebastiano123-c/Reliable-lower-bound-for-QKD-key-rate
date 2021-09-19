@@ -389,7 +389,6 @@ module QKD
 
         ! close sdp.out
         close(15)
-
         ! execute command to perform SDPA solving
         call execute_command_line("sdpa sdp.dat sdp.out", wait=.true.)
         return
