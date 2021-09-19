@@ -423,6 +423,7 @@ module QKD
                 do jj = 1, size(vals)
                     read(vals(jj),*) arr(jj)
                 enddo
+                ! call mat_dump(arr)
                 close(20); return
             endif
             if(line == "xVec = ")then; ii=1; else; ii=0; endif
