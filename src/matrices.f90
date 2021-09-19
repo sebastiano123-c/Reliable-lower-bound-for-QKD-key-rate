@@ -2,6 +2,10 @@ module matrices
     use debugging
     implicit none
     
+    interface mat_trace
+        module procedure mat_trace_complex8, mat_trace_real8
+    end interface
+
     contains
     function Kronecker_product(A,B)
     !Kronecker_product(
@@ -552,25 +556,42 @@ module matrices
         return
     endfunction is_positive
 
-    function mat_trace(mat)
-    !mat_trace(
+    function mat_trace_complex8(mat)
+    !mat_trace_complex8(
     !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
     !              )
     !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
         implicit none
         !
         double complex, intent(in)    :: mat(:,:)
-         double complex                :: mat_trace
+         double complex                :: mat_trace_complex8
          integer*4                    :: ii
         !
-        mat_trace=cmplx(0.0,0.0)
+        mat_trace_complex8=cmplx(0.0,0.0)
         do ii=1,size(mat,1)
-            mat_trace=mat_trace+mat(ii,ii)
+            mat_trace_complex8=mat_trace_complex8+mat(ii,ii)
         enddo
         !
         return
-    endfunction mat_trace
+    endfunction mat_trace_complex8
 
+    function mat_trace_real8(mat)
+        !mat_trace(
+        !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
+        !              )
+        !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
+            implicit none
+            !
+            real(8), intent(in)    :: mat(:,:)
+            real(8)                :: mat_trace_real8
+            integer*4              :: ii
+            !
+            mat_trace_real8=0_8
+            do ii=1,size(mat,1)
+                mat_trace_real8=mat_trace_real8+mat(ii,ii)
+            enddo
+            return
+        endfunction mat_trace_real8
     function cnorm(psi, dx)
     !cnorm(
     !             psi(double complex) = 'array 1 dimensionale',
