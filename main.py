@@ -302,7 +302,7 @@ def sdp_solver(d, rho, grad_f, Gamma, gamma, solver_name='MOSEK', solver_verbosi
     constraints = constraints + [ X + rho == cp.conj(X + rho).T ] # is a Hermitian
     for ii, elm in enumerate(Gamma):
         constraints = constraints + [ cp.trace( (X + rho) @ elm)  == gamma[ii]]
-
+    
     # solve
     obj = cp.Minimize( cp.real(cp.trace( X.T @  grad_f )) )      
     prob = cp.Problem( obj, constraints )
@@ -373,7 +373,7 @@ def compute_primal(rho_0, Kraus, sifting, isometry, ZA, Gamma, gamma, epsilon = 
                 f_1 = f_2
 
         # if f_1 == f_rho the next step will be the same
-        if(abs(f_1-bb84_frho) <= 1e-8): break
+        if(abs(f_1-bb84_frho) <= 1e-10): break
 
         # assign rho_{i+1} for the next iteration
         rho_0 = rho_0 + Delta_rho_0 * tt

@@ -297,8 +297,8 @@ module QKD
         rm(n+1:,n+1:) = real(cm)
         return
     endsubroutine complex_to_realm
-    
-    subroutine SDPA_write_problem(m, n, j, c, F0, Fi, Gi, pi)
+
+    subroutine SDPA_write_problem(m, n, j, c, F0, Fi)
     ! Writes the SDP problem given by
     !   minimize  : sum_i( x_i*c_i )
     !   subject to: sum_i( x_i*F_i - F0 ) >= 0
@@ -316,27 +316,33 @@ module QKD
     !   pi = set of constraints
         implicit none
 
-        integer,intent(in)    :: m            ! number of x_i
-        integer,intent(in)    :: n            ! dimension of F0
-        integer,intent(in)    :: j            ! dimension of F0
-        real(8),INTENT(IN)    :: c(m)         ! costant vector of c_i
-        real(8),INTENT(IN)    :: F0(2*n,2*n)       
-        real(8),INTENT(IN)    :: Fi(m,2*n,2*n)    
-        complex(8),INTENT(IN) :: Gi(j,n,n)    
-        real(8),INTENT(IN)    :: pi(j)    
-        INTEGER               ii, jj, kk, sz
+        integer,intent(in) :: m            ! number of x_i
+        integer,intent(in) :: n            ! dimension of F0
+        integer,intent(in) :: j            ! dimension of F0
+        real(8),INTENT(IN) :: c(m)         ! costant vector of c_i
+        real(8),INTENT(IN) :: F0(n,n)       
+        real(8),INTENT(IN) :: Fi(m,n,n)    
+        ! real(8),INTENT(IN) :: Gi(j,n,n)    
+        ! real(8),INTENT(IN) :: pi(j)    
+        INTEGER            ii, jj, kk, sz
 
         ! open file
         open(unit=15, file="sdp.dat")
 
         ! write titleand comment
-        write(15,'(A)') '"sdp problem"'
+        write(15,'(A,A,A)') '"',"sdp problem",'"'
         write(15,'(i0,A)') m," = mDIM"          ! m
-        write(15,'(A)') "1 = nBLOCK"            ! 
-        write(15,'(i0,A)') n," = bLOCKsTRUCT"   ! n
+        ! write(15,'(i0,A)') j+2," = nBLOCK"       
+        write(15,'(i0,A)') 1," = nBLOCK"       
+        write(15,'(A,i0,A)',advance="no") "(",2*n,","
+        do jj = 1, j
+            write(15,'("1,")',advance="no")
+        enddo
+        write(15,'(A)',advance="no") "1) = bLOCKsTRUCT"   ! n
 
         ! write C
         sz = size(c)
+        write(15,*)''
         write(15,'("{")',advance="no")
         do jj = 1, sz
             write(15, '(f7.4)' ,advance="no") c(jj)
@@ -348,30 +354,34 @@ module QKD
 
         ! write F0
         sz = size(F0,1)
-        write(15,'("{")',advance="no")
+        ! open
+        write(15,'(" {")',advance="no")
+        ! positivity
         do jj = 1, sz
-            write(15,'("{")',advance="no")
+            write(15,'(" {")',advance="no")
             do kk = 1, sz
                 write(15, '(f7.4)' ,advance="no") F0(jj, kk)
                 if(kk<sz)then
                     write(15,'(",")',advance="no")
                 endif
             enddo
-            write(15,'("}")',advance="no")
+            write(15,'(" }")',advance="no")
             if(jj<sz)then
                 write(15,'(",")',advance="no")
             endif
         enddo
-        write(15,'("}")',advance="no")
+        ! close 
+        write(15,'("}")')
 
         ! write Fi
         do ii = 1, m
-            write(15,*)''
+            ! open
             write(15,'("{")',advance="no")
+            ! positivity
             do jj = 1, sz
-                write(15,'("{")',advance="no")
+                write(15,'(" {")',advance="no")
                 do kk = 1, sz
-                    write(15, '(f7.4)' ,advance="no") Fi(ii, jj, kk)
+                    write(15,'(es20.10)',advance="no") Fi(ii, jj, kk)
                     if(kk<sz)then
                         write(15,'(",")',advance="no")
                     endif
@@ -381,16 +391,15 @@ module QKD
                     write(15,'(",")',advance="no")
                 endif
             enddo
-            write(15,'("}")',advance="no")
-            if(jj<sz)then
-                write(15,'(",")',advance="no")
-            endif
+            ! close
+            write(15,'("}")')
         enddo
 
         ! close sdp.out
         close(15)
         ! execute command to perform SDPA solving
         call execute_command_line("sdpa sdp.dat sdp.out", wait=.true.)
+        ! stop
         return
     endsubroutine SDPA_write_problem
    
@@ -431,7 +440,7 @@ module QKD
         return
     endsubroutine SDPA_read_solution
 
-    subroutine compute_primal(r0, fr, gf, kr, sf, is, km, Gi, pi, Oj, mi, fi, ep)
+    subroutine compute_primal(r0, fr, gf, kr, sf, is, km, Oj, mi, fi, ep)
     ! Compute_primal: computes the primal SDP problem
     ! ---------------------------------------------------------------
     ! Arguments:
@@ -453,13 +462,12 @@ module QKD
         complex(8), INTENT(IN)                     :: r0(:,:)
         real(8), INTENT(INOUT)                     :: fr
         complex(8), INTENT(INOUT)                  :: gf(:,:), is(:,:), sf(:,:), kr(:,:,:),&
-        &Gi(:,:,:),Oj(:,:,:), km(:,:,:)
-        real(8), INTENT(IN)                        :: pi(:)
+        &Oj(:,:,:), km(:,:,:)
         INTEGER, INTENT(IN), OPTIONAL              :: mi, fi
         REAL(8), INTENT(IN), OPTIONAL              :: ep
         complex(8), dimension(:,:), ALLOCATABLE    :: rho_i, rho_4, rho_5, delta_rho, logrho, rho_temp
-        real(8), ALLOCATABLE                       :: oj_dbld(:,:,:), c_i(:), F0_real(:,:), x_i(:)
-        INTEGER                                    :: mit, finesse, counter, m, siz, iostat, jj, tt, kk
+        real(8), ALLOCATABLE                       :: oj_dbl(:,:,:), c_i(:), F0_real(:,:), x_i(:)
+        INTEGER                                    :: mit, finesse, counter, m, j, siz, iostat, jj, tt, kk
         real                                       :: Ppass
         real(8)                                    :: f_1, f_2, epsilon
     
@@ -484,9 +492,9 @@ module QKD
         ! find the real matrices starting from the complex oj set
         m = size(oj,1)
         siz = size(oj,2)
-        allocate(oj_dbld(m, 2*siz, 2*siz))
+        allocate(oj_dbl(m, 2*siz, 2*siz))
         do jj = 1, m
-            call complex_to_realm(siz, oj(jj,:,:), oj_dbld(jj,:,:))
+            call complex_to_realm(siz, oj(jj,:,:), oj_dbl(jj,:,:))
         enddo
 
         ! while counter <= mit
@@ -543,7 +551,7 @@ module QKD
             enddo
             allocate(F0_real(2*siz,2*siz))
             call complex_to_realm(siz, -rho_i, F0_real)
-            call SDPA_write_problem(m, siz, size(Gi,1), c_i, F0_real, oj_dbld, Gi, pi)
+            call SDPA_write_problem(m, 2*siz, j, c_i, F0_real, oj_dbl)
             allocate(x_i(m))
             call SDPA_read_solution(m, x_i)
 
@@ -560,11 +568,11 @@ module QKD
             if(abs(real(mat_trace(matmul(transpose(delta_rho),gf)))).le.epsilon) then
                 write(*,*) "algorithm exited at: ", counter, "step (precision=", &
                 &real(mat_trace(matmul(transpose(delta_rho), gf))),")"
-                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_dbld,c_i,F0_real,stat=iostat)
+                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_dbl,c_i,F0_real,stat=iostat)
                 exit
             else if(counter==mit) then
                 write(*,*) "algorithm reached maxit: ", mit
-                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_dbld,c_i,F0_real,stat=iostat)
+                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_dbl,c_i,F0_real,stat=iostat)
                 exit
             endif
 
@@ -584,8 +592,9 @@ module QKD
                     f_1 = f_2
                 endif
             enddo
-            print*, "fin"
-    
+
+        ! if f_1 == fr EXIT
+            if(abs(f_1-fr) <= 1e-10) exit
         ! assign new rho_i
             rho_i = rho_i + delta_rho * tt
         ! increment counter
@@ -594,7 +603,7 @@ module QKD
             DEALLOCATE(delta_rho, rho_4, rho_5, x_i, c_i, F0_real, stat=iostat)
             call checkpoint(iostat==0, text="while loop deallocation failed")
         enddo
-        DEALLOCATE(oj_dbld, rho_i, stat=iostat)
+        DEALLOCATE(oj_dbl, rho_i, stat=iostat)
         return
     endsubroutine compute_primal
 

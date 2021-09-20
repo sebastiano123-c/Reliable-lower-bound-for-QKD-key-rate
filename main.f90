@@ -124,10 +124,10 @@ program main
 !---------------------------------------------------------------------
 ! variables of the protocol
     Pz = 0.5        ! Z-basis probability
-    N_start = 0.; N_stop = 0.12; N_steps = 10    ! # of steps 
-    Maxit = 20      ! maximum # of iterations
+    N_start = 0.; N_stop = 0.12; N_steps = 5    ! # of steps 
+    Maxit = 10      ! maximum # of iterations
     epsilon = 1E-10 ! convergence tightness
-    finesse = 20    ! finesse need for searching tt
+    finesse = 10    ! finesse need for searching tt
 
 ! constants
     PI = 4.0*ATAN(1.0)
@@ -456,25 +456,25 @@ program main
 ! ALGORITHM 
 ! 7* STEP 1
         ALLOCATE(grad_f(size(rho_0, 1), size(rho_0,2)))
-        call compute_primal(rho_0, f_rho, grad_f, Kraus, sifting, isometry, key_map, Gamma_i, p_i, Omega_j, Maxit, finesse, epsilon)
+        call compute_primal(rho_0, f_rho, grad_f, Kraus, sifting, isometry, key_map, Omega_j, Maxit, finesse, epsilon)
 
 ! 8* STEP 2
         sp = f_rho - hp
         if(trn<1E-10)trn=0.
-        write(10,'(es20.10," ",es20.10," ",es20.10)')uu, sp, th
+        write(10,'(es20.10," ",es20.10," ",es20.10," ",es20.10)')uu, sp, th, f_rho
         deallocate(rho_0, grad_f, p_i, p_tilde, stat=ios)
         call checkpoint(ios==0, text="rho_0 deallocation failed")
     enddo
     write(10,'("EOD")')
     write(10,'(a)')"set terminal wxt 0 size 3000,1600"        
-    write(10,'(a)')"set size 1,1"        
+    ! write(10,'(a)')"set size 1,1"        
     write(10,'("set xlabel ''depolarization probability''")')
     write(10,'("set ylabel ''secret key rate''")')
     write(10,'("set title ''reliable lower bound for BB84 protocol''")')
     write(10,'("set grid")')
     write(10,'("set key outside")')    
     write(10,'("#set xr [:]")')    
-    write(10,'(A)')"p $data u 1:2 w lp t 'step 1', $data u 1:3 w lp t 'theoric'"
+    write(10,'(A)')"p $data u 1:2 w lp t 'step 1', $data u 1:3 w lp t 'theoric', $data u 1:4 w lp t 'f_{\rho}'"
     close(10)!close file
 !   END PROCEDURE
 !---------------------------------------------------------------------------------------------------------------------
