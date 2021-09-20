@@ -4,9 +4,64 @@ module matrices
     
     interface mat_trace
         module procedure mat_trace_complex8, mat_trace_real8
-    end interface
+    endinterface
+
+    interface det
+        module procedure det_real, det_complex
+    endinterface
 
     contains
+
+    real(8) function DET_real(aa)
+        real(8) aa(:,:)
+        real(8) tmp,c(size(aa,dim=1),size(aa,dim=2))
+        real(8) max
+        integer i,k,l,m,num(size(aa,dim=1)),n
+        n=size(aa,dim=1)
+        DET_real=1.    
+        do k=1,n
+            max=aa(k,k);num(k)=k;
+            do i=k+1,n 
+                if(abs(max)<abs(aa(i,k))) then
+                    max=aa(i,k)
+                    num(k)=i
+                endif
+            enddo
+            if (num(k)/=k) then
+                do l=k,n 
+                    tmp=aa(k,l)
+                    aa(k,l)=aa(num(k),l)
+                    aa(num(k),l)=tmp
+                enddo
+                DET_real=-1.*DET_real
+            endif
+            do m=k+1,n
+                c(m,k)=aa(m,k)/aa(k,k)
+                do l=k,n 
+                    aa(m,l)=aa(m,l)-c(m,k)*aa(k,l)
+                enddo
+            enddo !There we made matrix triangular!    
+        enddo
+
+        do i=1,n
+            DET_real=DET_real*aa(i,i)
+        enddo
+        return
+    endfunction DET_real
+
+
+    real(8) function DET_complex(cc)
+        complex(8) cc(:,:)
+        real(8) rr(2*size(cc,dim=1),2*size(cc,dim=2))
+        
+        call complex_to_realm(size(cc,dim=1),cc,rr)
+
+        DET_complex = 0.
+        DET_complex = DET_real(rr)
+        DET_complex = sqrt(DET_complex)
+        return
+    endfunction DET_complex
+
     function Kronecker_product(A,B)
     !Kronecker_product(
     !                    A,B(double complex)='input matrices'
@@ -180,8 +235,9 @@ module matrices
         enddo
         return 
     endfunction row
-    !invert_hermitian
+    
     function invert_hermitian(m, n)
+    !invert_hermitian
         implicit none
         integer, intent(in) :: n
         complex(8), intent(in) :: m(n,n)
@@ -277,7 +333,7 @@ module matrices
         implicit none
         integer, INTENT(IN)     :: n
         complex(8), INTENT(IN)  :: matrix(n,n)
-        Integer                 :: info, lda, ldc, ldd, ldvs, lwork, sdim, nb,ii
+        Integer                 :: info, lda, ldc, ldd, ldvs, lwork, sdim, nb, ii
         complex(8), Allocatable :: a(:, :), c(:, :), d(:, :), vs(:, :), &
                                     w(:), work(:), sqr(:,:), vrinv(:,:), ipiv(:)
         complex(8)              :: wdum(1)
@@ -286,15 +342,15 @@ module matrices
         Intrinsic               :: cmplx, epsilon, max, nint, real
         nb = 64; lda = n; ldc = n; ldd = n; ldvs = n
         Allocate (a(lda,n), vs(ldvs,n), c(ldc,n), d(ldd,n), w(n), rwork(n))
-  
+    
         ! Use routine workspace query to get optimal workspace.
         lwork = -1
         Call zgees('V', 'N', select, n, a, lda, sdim, w, vs, ldvs, wdum, lwork, rwork, dummy, info)
-  
+    
         ! Make sure that there is enough workspace for block size nb.
         lwork = max((nb+1)*n, nint(real(wdum(1))))
         Allocate (work(lwork))
-  
+    
         ! Read in the matrix A
         a = matrix
 
@@ -338,8 +394,93 @@ module matrices
         deallocate(sqr, vs, c, vrinv, w, work, rwork, ipiv)
     endfunction logM
 
-    !A = QR
+    function logMV(matrix,n) result(A)
+    !logMV (
+    !           mat(complex(8)) = 'input matrix'
+    !       )
+    !returns the log of the matrix
+        implicit none
+        integer,INTENT(IN)     :: n
+        complex(8),INTENT(IN)  :: matrix(n,n)
+        Integer                :: info, lwork, nb, ii
+        complex(8),Allocatable :: a(:, :), w(:), work(:), diagm(:,:),&
+        & vrinv(:,:), ipiv(:), vl(:,:),vr(:,:)
+        Real(8),Allocatable    :: rwork(:)
+
+        Allocate (a(n,n), w(n), rwork(2*n))
+        Allocate (vl(n,n), vr(n,n))
+
+        ! Read in the matrix A
+        a = matrix
+        ! Make sure that there is enough workspace for block size nb.
+        nb = 64
+        lwork = (nb+1)*n!, nint(real(wdum(1))))
+        Allocate (work(lwork))
+        call zgeev('N','V',n,a,n,w,VL,n,VR,n,WORK,LWORK,rwork,INFO)
+
+        !Check for convergence.
+        call checkpoint(INFO==0,text="logMV, ZGEEV::&
+        &(i<0): the i-th argument had an illegal value (program is terminated);\n&
+        &(i=1 to n): the QR algorithm failed to compute the i eigenvalue;\n&
+        &(i=n+1): The eigenvalues could not be reordered;\n&
+        &(i=n+2): After reordering, roundoff changed values. [n,i]:",&
+        &vec = [n, info]&
+        &)
+
+        allocate(diagm(n,n))
+        diagm = cmplx(0.,0.)
+        do ii = 1,n
+            if(abs(w(ii)) > 1e-10 ) then
+                diagm(ii, ii) = zlog(W(ii))
+            endif
+        enddo
+
+        ALLOCATE(vrinv(n,n), ipiv(n))
+        vrinv = VR
+
+        call zgetrf( n, n, VRinv, n, ipiv, info )
+        !Check for convergence.
+        call checkpoint(&
+        &INFO==0,text='logMV, zgetrf:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
+        &(i > 0):  if INFO = i, the algorithm failed to converge; i&
+        &off-diagonal elements of an intermediate tridiagonal&
+        &form did not converge to zero.',var=info)
+
+        call zgetri( n, VRinv, n, ipiv, WORK, LWORK, INFO )
+        !Check for convergence.
+        call checkpoint(&
+        &INFO==0,text='logMV, zgetri:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
+        &(i > 0):  if INFO = i, the algorithm failed to converge; i&
+        &off-diagonal elements of an intermediate tridiagonal&
+        &form did not converge to zero.',var=info)
+
+        a = matmul(matmul(VR,diagm),VRinv) 
+        deallocate(diagm, vrinv, w, work, rwork, ipiv, vl, vr)
+    endfunction logMV
+
+    subroutine complex_to_realm(n, cm, rm)
+        ! Given an complex matrix cm \in C^{nxn}, this subroutine returns
+        ! the real matrix rm \in R^{2nx2n}.
+        ! ---------------------------------------------------------------
+        ! Arguments:
+        !   n = # of columns of om
+        !   om(n,n) = complex input matrix
+        !   nm(2n,2n) = real output matrix
+            implicit none
+            INTEGER, INTENT(IN)     :: n
+            real(8), INTENT(INOUT)  :: rm(2*n,2*n)
+            complex(8), INTENT(IN)  :: cm(n,n)
+        
+            rm = 0.
+            rm(:n,:n) = real(cm)
+            rm(:n,n+1:) = - aimag(cm)
+            rm(n+1:,:n) = aimag(cm)
+            rm(n+1:,n+1:) = real(cm)
+            return
+        endsubroutine complex_to_realm
+
     subroutine Gram_Schmidt_decomposition(A,Q,R,m,n)
+    ! Gram_Schmidt_decomposition 
         implicit none
         integer, INTENT(IN)         :: m,n
         complex(8), INTENT(IN)      :: A(m,n)
@@ -377,7 +518,7 @@ module matrices
     endsubroutine Gram_Schmidt_decomposition
 
     subroutine gram_schmidtm(A,n,k,l)
-    !gram_schmidt(
+    !gram_schmidt for matrices(
     !               A(complex*8, intent(in)) = 'input matrix'
     !               Q(complex*8, intent(in)) = 'output decomposed matrix'
     !               R(complex*8, intent(in)) = 'output upper triangular matrix'
@@ -411,12 +552,12 @@ module matrices
     endsubroutine gram_schmidtm
 
     subroutine extend_basism(V, B, j, n)
-        !Extend a set of j.leq.k orthogonal matrices and k.leq.m orthonormal matrices to basis of the space H^m.
-        ! ---------------------------------------------
-        ! Keyword arguments:
-        ! V -- the new set of matrices (size (j, n, n) )
-        ! B -- the orthonormal set to be extended (size (k, n, n))
-        ! return C = (B,V^{orth})
+    !Extend a set of j.leq.k orthogonal matrices and k.leq.m orthonormal matrices to basis of the space H^m.
+    ! ---------------------------------------------
+    ! Keyword arguments:
+    ! V -- the new set of matrices (size (j, n, n) )
+    ! B -- the orthonormal set to be extended (size (k, n, n))
+    ! return C = (B,V^{orth})
         integer, INTENT(IN)                     :: j, n ! j=len(V), k=len(B), n=dim of the space 
         complex(8), intent(in)                  :: V(j, n, n)
         complex(8), intent(inout), ALLOCATABLE  :: B(:,:,:)
@@ -446,10 +587,6 @@ module matrices
         DEALLOCATE(U)
         return
     endsubroutine extend_basism
-
-    !=========================
-    !    USEFUL STUFF
-    !=========================
 
     function identity(N)
     !identity(
@@ -576,10 +713,10 @@ module matrices
     endfunction mat_trace_complex8
 
     function mat_trace_real8(mat)
-        !mat_trace(
-        !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
-        !              )
-        !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
+    !mat_trace_real8(
+    !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
+    !              )
+    !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
             implicit none
             !
             real(8), intent(in)    :: mat(:,:)
@@ -591,7 +728,8 @@ module matrices
                 mat_trace_real8=mat_trace_real8+mat(ii,ii)
             enddo
             return
-        endfunction mat_trace_real8
+    endfunction mat_trace_real8
+    
     function cnorm(psi, dx)
     !cnorm(
     !             psi(double complex) = 'array 1 dimensionale',

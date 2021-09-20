@@ -124,10 +124,10 @@ program main
 !---------------------------------------------------------------------
 ! variables of the protocol
     Pz = 0.5        ! Z-basis probability
-    N_start = 0.; N_stop = 0.12; N_steps = 5    ! # of steps 
+    N_start = 0.; N_stop = 0.12; N_steps = 10    ! # of steps 
     Maxit = 10      ! maximum # of iterations
     epsilon = 1E-10 ! convergence tightness
-    finesse = 10    ! finesse need for searching tt
+    finesse = 20    ! finesse need for searching tt
 
 ! constants
     PI = 4.0*ATAN(1.0)
@@ -443,7 +443,10 @@ program main
         allocate(rho_0(size(rho_ab, 1), size(rho_ab, 2)))
         rho_0 = cmplx(0., 0.)
         do jj = 1, size(Gamma_tilde_k, 1)
-            rho_0 = rho_0 + p_tilde(jj) * Gamma_tilde_k(jj,:,:)
+            rho_0 = rho_0 + mat_trace(matmul(Gamma_tilde_k(jj,:,:),rho_ab))*Gamma_tilde_k(jj,:,:)
+        enddo
+        do jj = 1, size(Omega_j, 1)
+            rho_0 = rho_0 + mat_trace(matmul(Omega_j(jj,:,:),rho_ab))*Omega_j(jj,:,:)
         enddo
         rho_0 = rho_0 / mat_trace(rho_0) ! renormalization
         !rho_0 = rho_ab

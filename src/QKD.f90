@@ -13,10 +13,11 @@ module QKD
     implicit none
     
     contains
+
+    subroutine random_key(string)
     !random_key(
     !           strin(char(*)) (inout) = 'random string'
     !)
-    subroutine random_key(string)
         implicit none
         !
         CHARACTER(*), INTENT(INOUT) :: string
@@ -32,11 +33,11 @@ module QKD
         return
     endsubroutine random_key
 
+    subroutine depolarizing_channel(A, prob)
     !depolarizing_channel(
     !                    A(double complex) = 'qubit which is depolarized'
     !                    prob(real*4) = 'probability of being depolarized'
     !                   )
-    subroutine depolarizing_channel(A, prob)
         implicit none
         !
         complex(8), DIMENSION(:,:), INTENT(INOUT)   :: A
@@ -44,11 +45,12 @@ module QKD
         A = prob/2 *identity(int8(size(A,1))) + (1-prob)*A
         return
     endsubroutine depolarizing_channel
+    
+    subroutine angle_displacement(A, angle)
     !angle_displacement(
     !                    A(double complex) = 'qubit which is depolarized'
     !                    angle(real*4) = 'angle theta which displace qubit polarization'
     !                   )
-    subroutine angle_displacement(A, angle)
         implicit none
         !
         complex(8), DIMENSION(2,2), INTENT(INOUT)   :: A
@@ -190,29 +192,14 @@ module QKD
         implicit none
         integer, INTENT(IN)         :: n
         complex(8), intent(in)      :: rho(n,n), sigmap(n,n)    ! input rho
-        ! real(8), ALLOCATABLE        :: p(:), q(:)
-        ! complex(8), ALLOCATABLE     :: rho_avt(:,:), sigma_avt(:,:)
         real(8)                     :: RelativeEntropy
         real                        tol
-        ! INTEGER                     ii
 
         tol = 1e-2
+        ! rho tr[rho] - sigma tr[sigma] - (rho-sigma)tr[sigma] 
         RelativeEntropy = VonNeumannEntropy(rho,n,tol)
-        RelativeEntropy = RelativeEntropy - VonNeumannEntropy(sigmap,n,tol)
-        RelativeEntropy = ( RelativeEntropy - real(mat_trace( matmul(rho-sigmap, logM(sigmap,n) ) ), kind=8) )/log(2.)
-
-        ! ! print*,"egv1"
-        ! call eigensolver(rho, p, rho_avt, n)
-        ! ! print*,"egv2"
-        ! call eigensolver(sigmap, q, sigma_avt, n)
-
-        ! tol = 1e-10
-        ! RelativeEntropy = 0.
-        ! do ii = 1, n
-        !     if(p(ii)>tol.and.q(ii)>tol)then
-        !         RelativeEntropy = RelativeEntropy + p(ii)*log(p(ii)/q(ii))/log(2.)
-        !     endif
-        ! enddo
+        ! RelativeEntropy = RelativeEntropy - VonNeumannEntropy(sigmap,n,tol)
+        RelativeEntropy = ( RelativeEntropy - real(mat_trace(matmul((rho),logMV(sigmap,n))),kind=8))/log(2.)
     endfunction RelativeEntropy
 
     function binary_entropy(p) result(be)
@@ -230,74 +217,6 @@ module QKD
             be = -p*log(p)/log(2.) - (1-p)*log(1-p)/log(2.)
         endif
     endfunction binary_entropy
-
-    ! subroutine solve_sdp(r0, dr, gf, gb)
-    !     ! r0 = rho_0
-    !     ! dr = delta_rho
-    !     ! gr = grad_f
-    !     ! gb = gamma_basis
-    !     implicit none
-    
-    !     complex(8), INTENT(IN)                      :: gb(:,:,:), gf(:,:), r0(:,:)
-    !     complex(8), INTENT(INOUT)                   :: dr(:,:)
-    !     real(8), ALLOCATABLE                        :: AT(:,:), C(:), sol_x(:), sol_y(:),&
-    !     & up_bounds(:)
-    !     integer, ALLOCATABLE                        ::  INTBASIS(:)
-    !     integer nsize, ierror, jj
-    
-    !     !          subject to AT <= B
-    !     !   ATTENTION !!! VERIFY THAT THE MATRICES ARE REAL !!! OTHERWISE, TWICE THE DIMENSION OF THE PROBLEM  !!!
-    !     nsize = size(gb, 2)
-    !     allocate(AT(nsize, nsize))
-    !     nsize = size(gb, 1)
-    !     allocate(C(nsize))
-    !     ! find c^T = Tr[ O^T_j * grad_f ]
-    !     C = 0.
-    !     do jj = 1, nsize
-    !         C(jj) = real(mat_trace( matmul( transpose( gb(jj,:,:) ), gf) ), kind=8)! real
-    !     enddo
-    !     ! find AT constraints
-    !     AT = 0.
-    !     do jj = 1, nsize
-    !         AT = AT - real( gb(jj,:,:) , kind=8 )! the minus convert it in \geq
-    !     enddo
-    !     AT = transpose( real(AT + r0, kind=8) )! real
-    !     ! define the output vector X solutions and Y dual solutions
-    !     allocate(sol_x(nsize), sol_y(nsize), INTBASIS(nsize), up_bounds(nsize))
-    !     call FEASIBLEBASIS (nsize, nsize, AT, C, INTBASIS, ierror)
-    !     up_bounds = 0.
-    !     ! INTBASIS = [(jj, jj=1,nsize)]
-    !     call DUALSIMPLEX(nsize, nsize, AT, up_bounds, C, INTBASIS, sol_x, sol_y, ierror)
-    !     call mat_dump(sol_x)
-    !     call mat_dump(sol_y)
-    !     ! define dr = sum_j w_j O_j
-    !     dr = cmplx(0., 0.)
-    !     do jj = 1, size(gb, 1)
-    !         dr = dr +  sol_x(jj)*gb(jj, :, :) 
-    !     enddo
-    !     DEALLOCATE(at, c, sol_x, sol_y, up_bounds, INTBASIS, stat=ierror)
-    ! endsubroutine solve_sdp
-
-    subroutine complex_to_realm(n, cm, rm)
-    ! Given an complex matrix cm \in C^{nxn}, this subroutine returns
-    ! the real matrix rm \in R^{2nx2n}.
-    ! ---------------------------------------------------------------
-    ! Arguments:
-    !   n = # of columns of om
-    !   om(n,n) = complex input matrix
-    !   nm(2n,2n) = real output matrix
-        implicit none
-        INTEGER, INTENT(IN)     :: n
-        real(8), INTENT(INOUT)  :: rm(2*n,2*n)
-        complex(8), INTENT(IN)  :: cm(n,n)
-    
-        rm = 0.
-        rm(:n,:n) = real(cm)
-        rm(:n,n+1:) = - aimag(cm)
-        rm(n+1:,:n) = aimag(cm)
-        rm(n+1:,n+1:) = real(cm)
-        return
-    endsubroutine complex_to_realm
 
     subroutine SDPA_write_problem(m, n, c, F0, Fi)
     ! Writes the SDP problem given by
@@ -327,7 +246,7 @@ module QKD
         INTEGER            ii, jj, kk, sz
 
         ! open file
-        open(unit=15, file="sdp.dat")
+        open(unit=15, file="sdp.dat", action="write")
 
         ! write titleand comment
         write(15,'(A,A,A)') '"',"sdp problem",'"'
@@ -420,7 +339,8 @@ module QKD
         INTEGER                       ii, jj, kk, NUM_LINES
 
         ii = 0; kk = 0
-        open(unit=20, file="sdp.out")
+        open(unit=20, file="sdp.out", action='READ')
+
         ! num lines
         do while (kk == 0)
             NUM_LINES = NUM_LINES + 1
@@ -527,8 +447,9 @@ module QKD
             allocate(logrho(siz,siz))
             siz = size(rho_i, 1) ! 4
             allocate(rho_temp(siz,siz))
+            print*,"rho4"
             siz = size(rho_4, 1)
-            logrho = logM(rho_4,siz)
+            logrho = logMV(rho_4,siz)
             ! inverse function
             call CP_map_inverse(logrho, kr, sf, is, rho_temp)
             gf = rho_temp
@@ -538,7 +459,8 @@ module QKD
             siz = size(rho_i, 1) ! 4
             allocate(rho_temp(siz,siz))
             siz = size(rho_4, 1)
-            logrho = logM(rho_5,siz)
+            print*,"rho5"
+            logrho = logMV(rho_5,siz)
             ! inverse function
             call CP_map_inverse(logrho, kr, sf, is, rho_temp)
             gf = transpose(gf - rho_temp)/log(2.)
@@ -551,13 +473,13 @@ module QKD
                 c_i(jj) = real(mat_trace(matmul(oj(jj,:,:), gf)),4)
             enddo
             allocate(F0_real(2*siz,2*siz))
-            call complex_to_realm(siz, -rho_i, F0_real)
-            call SDPA_write_problem(m, 2*siz, c_i, F0_real, oj_dbl)
+            call complex_to_realm(siz,rho_i,F0_real)
+            ! call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
             allocate(x_i(m))
-            call SDPA_read_solution(m, x_i)
+            ! call SDPA_read_solution(m,x_i)
 
             ! find delta_rho
-            siz = size(rho_i, 1)
+            siz = size(rho_i,1)
             allocate(delta_rho(siz, siz))
             delta_rho = cmplx(0.,0.)
             do jj = 1, m
@@ -604,13 +526,11 @@ module QKD
             DEALLOCATE(delta_rho, rho_4, rho_5, x_i, c_i, F0_real, stat=iostat)
             call checkpoint(iostat==0, text="while loop deallocation failed")
         enddo
-        DEALLOCATE(oj_dbl, rho_i, stat=iostat)
+        DEALLOCATE(oj_dbl,rho_i,c_i,stat=iostat)
         return
     endsubroutine compute_primal
 
 endmodule QKD
-
-
 
 
 ! subroutine SDPA_write_problem(m, n, c, F0, Fi, Gi, pi)
@@ -707,3 +627,50 @@ endmodule QKD
 !         call execute_command_line("sdpa sdp.dat sdp.out", wait=.true.)
 !         return
 !     endsubroutine SDPA_write_problem
+
+! subroutine solve_sdp(r0, dr, gf, gb)
+    !     ! r0 = rho_0
+    !     ! dr = delta_rho
+    !     ! gr = grad_f
+    !     ! gb = gamma_basis
+    !     implicit none
+    
+    !     complex(8), INTENT(IN)                      :: gb(:,:,:), gf(:,:), r0(:,:)
+    !     complex(8), INTENT(INOUT)                   :: dr(:,:)
+    !     real(8), ALLOCATABLE                        :: AT(:,:), C(:), sol_x(:), sol_y(:),&
+    !     & up_bounds(:)
+    !     integer, ALLOCATABLE                        ::  INTBASIS(:)
+    !     integer nsize, ierror, jj
+    
+    !     !          subject to AT <= B
+    !     !   ATTENTION !!! VERIFY THAT THE MATRICES ARE REAL !!! OTHERWISE, TWICE THE DIMENSION OF THE PROBLEM  !!!
+    !     nsize = size(gb, 2)
+    !     allocate(AT(nsize, nsize))
+    !     nsize = size(gb, 1)
+    !     allocate(C(nsize))
+    !     ! find c^T = Tr[ O^T_j * grad_f ]
+    !     C = 0.
+    !     do jj = 1, nsize
+    !         C(jj) = real(mat_trace( matmul( transpose( gb(jj,:,:) ), gf) ), kind=8)! real
+    !     enddo
+    !     ! find AT constraints
+    !     AT = 0.
+    !     do jj = 1, nsize
+    !         AT = AT - real( gb(jj,:,:) , kind=8 )! the minus convert it in \geq
+    !     enddo
+    !     AT = transpose( real(AT + r0, kind=8) )! real
+    !     ! define the output vector X solutions and Y dual solutions
+    !     allocate(sol_x(nsize), sol_y(nsize), INTBASIS(nsize), up_bounds(nsize))
+    !     call FEASIBLEBASIS (nsize, nsize, AT, C, INTBASIS, ierror)
+    !     up_bounds = 0.
+    !     ! INTBASIS = [(jj, jj=1,nsize)]
+    !     call DUALSIMPLEX(nsize, nsize, AT, up_bounds, C, INTBASIS, sol_x, sol_y, ierror)
+    !     call mat_dump(sol_x)
+    !     call mat_dump(sol_y)
+    !     ! define dr = sum_j w_j O_j
+    !     dr = cmplx(0., 0.)
+    !     do jj = 1, size(gb, 1)
+    !         dr = dr +  sol_x(jj)*gb(jj, :, :) 
+    !     enddo
+    !     DEALLOCATE(at, c, sol_x, sol_y, up_bounds, INTBASIS, stat=ierror)
+    ! endsubroutine solve_sdp

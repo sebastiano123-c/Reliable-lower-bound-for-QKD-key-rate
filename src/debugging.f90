@@ -2,7 +2,7 @@ module debugging
     implicit none
     !
     interface mat_dump
-        module procedure mat_dump_mat,mat_dump_mat_unit,mat_dump_vec, mat_dump_vec_unit
+        module procedure mat_dump_mat,mat_dump_mat_2_file,mat_dump_vec, mat_dump_vec_2_file
     end interface
 
     CONTAINS
@@ -157,7 +157,7 @@ module debugging
         integer, intent(in), optional :: opt
         integer, intent(in), optional :: flag
         !system
-        integer*4 ii,jj,N
+        integer*4 ii,jj,N,N2
         character(50) fmtStringCmplx,fmtString,fmtStringInt,typeof
         !
         if (present(opt))then!può essere aumentato in futuro
@@ -192,6 +192,7 @@ module debugging
         typeof='unknown'
         
         N=size(mat,1)
+        N2=size(mat,2)
         select type(mat)
             type is (complex(16))
                 typeof='complex*16'
@@ -253,12 +254,12 @@ module debugging
                     print*,'attenzione: flag/=1'
             endselect
         else
-            write(*,'(" [matrix details: ",A,", dim: ",I0,"x",I0,"]")') trim(typeof),N,size(mat,2)
+            write(*,'(" [matrix details: ",A,", dim: ",I0,"x",I0,"]")') trim(typeof),N,N2
         endif
         return
     endsubroutine mat_dump_mat
 
-    subroutine mat_dump_mat_unit(mat,unit_file,text,opt,flag)
+    subroutine mat_dump_mat_2_file(mat,unit_file,text,opt,flag)
         implicit none
         !inputs
         class(*), dimension(:,:), intent(in) :: mat
@@ -366,7 +367,7 @@ module debugging
             write(unit_file,'(" [matrix details: ",A,", dim: ",I0,"x",I0,"]")') trim(typeof),N,size(mat,2)
         endif
         return
-    endsubroutine mat_dump_mat_unit
+    endsubroutine mat_dump_mat_2_file
 !mat_dump_vec(
 !                 vec='input vec'
 !                 text='optional text to put with the name of the matrix'
@@ -466,7 +467,7 @@ module debugging
         return
     endsubroutine mat_dump_vec
 
-    subroutine mat_dump_vec_unit(vec,unit_file,text,opt,flag)
+    subroutine mat_dump_vec_2_file(vec,unit_file,text,opt,flag)
         implicit none
         !
         class(*), dimension(:), intent(in) :: vec
@@ -554,7 +555,7 @@ module debugging
         endif
         !print*,''
         return
-    endsubroutine mat_dump_vec_unit
+    endsubroutine mat_dump_vec_2_file
 !LengthString(
 !              STR(character(*)) = 'string one wants to fine the length'
 !          )
