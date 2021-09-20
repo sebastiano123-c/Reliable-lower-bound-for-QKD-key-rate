@@ -179,7 +179,7 @@ module QKD
             if(avl <= 0.0)then
                 if( abs(avl) > tolerance )then
                     WRITE(*,'(A,i0,A,f10.6)')"VonNeumannEntropy:: eigenvalue ",ii," is negative ",avl
-                    stop
+                    ! stop
                 endif
             else       
                 VonNeumannEntropy = - avl*DLOG(avl) + VonNeumannEntropy
@@ -435,7 +435,7 @@ module QKD
             siz = size(rho_5,1)
             call checkpoint(real(mat_trace(rho_5))-1 <= 1e-6, text="Tr(rho_5)/=1",var=mat_trace(rho_5))
             call checkpoint(is_hermitian(rho_5,siz),text="rho_5 is not hermitian")
-            call checkpoint(is_positive(rho_5,siz),text="rho_5 is not positive")
+            call checkpoint(is_positive(rho_5,siz,1e0),text="rho_5 is not positive")
 
         ! f_rho
             fr = RelativeEntropy(rho_4, rho_5, siz)
@@ -473,10 +473,10 @@ module QKD
                 c_i(jj) = real(mat_trace(matmul(oj(jj,:,:), gf)),4)
             enddo
             allocate(F0_real(2*siz,2*siz))
-            call complex_to_realm(siz,rho_i,F0_real)
-            ! call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
+            call complex_to_realm(siz,-rho_i,F0_real)
+            call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
             allocate(x_i(m))
-            ! call SDPA_read_solution(m,x_i)
+            call SDPA_read_solution(m,x_i)
 
             ! find delta_rho
             siz = size(rho_i,1)
