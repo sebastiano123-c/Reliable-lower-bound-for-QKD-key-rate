@@ -190,28 +190,29 @@ module QKD
         implicit none
         integer, INTENT(IN)         :: n
         complex(8), intent(in)      :: rho(n,n), sigmap(n,n)    ! input rho
-        real(8), ALLOCATABLE        :: p(:), q(:)
-        complex(8), ALLOCATABLE     :: rho_avt(:,:), sigma_avt(:,:)
-        real(8)                     :: RelativeEntropy, tol
-        INTEGER                     ii
+        ! real(8), ALLOCATABLE        :: p(:), q(:)
+        ! complex(8), ALLOCATABLE     :: rho_avt(:,:), sigma_avt(:,:)
+        real(8)                     :: RelativeEntropy
+        real                        tol
+        ! INTEGER                     ii
 
-        ! print*,"re1"
-        ! RelativeEntropy = VonNeumannEntropy(rho,n,1e-2)
-        ! print*,"re2"
-        ! RelativeEntropy = ( RelativeEntropy - real(mat_trace( matmul(rho, logM(sigmap,n) ) ), kind=8) )/log(2.)
+        tol = 1e-2
+        RelativeEntropy = VonNeumannEntropy(rho,n,tol)
+        RelativeEntropy = RelativeEntropy - VonNeumannEntropy(sigmap,n,tol)
+        RelativeEntropy = ( RelativeEntropy - real(mat_trace( matmul(rho-sigmap, logM(sigmap,n) ) ), kind=8) )/log(2.)
 
-        ! print*,"egv1"
-        call eigensolver(rho, p, rho_avt, n)
-        ! print*,"egv2"
-        call eigensolver(sigmap, q, sigma_avt, n)
+        ! ! print*,"egv1"
+        ! call eigensolver(rho, p, rho_avt, n)
+        ! ! print*,"egv2"
+        ! call eigensolver(sigmap, q, sigma_avt, n)
 
-        tol = 1e-10
-        RelativeEntropy = 0.
-        do ii = 1, n
-            if(p(ii)>tol.and.q(ii)>tol)then
-                RelativeEntropy = RelativeEntropy + p(ii)*log(p(ii)/q(ii))/log(2.)
-            endif
-        enddo
+        ! tol = 1e-10
+        ! RelativeEntropy = 0.
+        ! do ii = 1, n
+        !     if(p(ii)>tol.and.q(ii)>tol)then
+        !         RelativeEntropy = RelativeEntropy + p(ii)*log(p(ii)/q(ii))/log(2.)
+        !     endif
+        ! enddo
     endfunction RelativeEntropy
 
     function binary_entropy(p) result(be)
@@ -298,7 +299,7 @@ module QKD
         return
     endsubroutine complex_to_realm
 
-    subroutine SDPA_write_problem(m, n, j, c, F0, Fi)
+    subroutine SDPA_write_problem(m, n, c, F0, Fi)
     ! Writes the SDP problem given by
     !   minimize  : sum_i( x_i*c_i )
     !   subject to: sum_i( x_i*F_i - F0 ) >= 0
@@ -318,7 +319,6 @@ module QKD
 
         integer,intent(in) :: m            ! number of x_i
         integer,intent(in) :: n            ! dimension of F0
-        integer,intent(in) :: j            ! dimension of F0
         real(8),INTENT(IN) :: c(m)         ! costant vector of c_i
         real(8),INTENT(IN) :: F0(n,n)       
         real(8),INTENT(IN) :: Fi(m,n,n)    
@@ -334,11 +334,12 @@ module QKD
         write(15,'(i0,A)') m," = mDIM"          ! m
         ! write(15,'(i0,A)') j+2," = nBLOCK"       
         write(15,'(i0,A)') 1," = nBLOCK"       
-        write(15,'(A,i0,A)',advance="no") "(",2*n,","
-        do jj = 1, j
-            write(15,'("1,")',advance="no")
-        enddo
-        write(15,'(A)',advance="no") "1) = bLOCKsTRUCT"   ! n
+        ! write(15,'(A,i0,A)',advance="no") "(",2*n,","
+        ! do jj = 1, j
+        !     write(15,'("1,")',advance="no")
+        ! enddo
+        ! write(15,'(A)',advance="no") "1) = bLOCKsTRUCT"   ! n
+        write(15,'(i0," = bLOCKsTRUCT")') n
 
         ! write C
         sz = size(c)
@@ -467,7 +468,7 @@ module QKD
         REAL(8), INTENT(IN), OPTIONAL              :: ep
         complex(8), dimension(:,:), ALLOCATABLE    :: rho_i, rho_4, rho_5, delta_rho, logrho, rho_temp
         real(8), ALLOCATABLE                       :: oj_dbl(:,:,:), c_i(:), F0_real(:,:), x_i(:)
-        INTEGER                                    :: mit, finesse, counter, m, j, siz, iostat, jj, tt, kk
+        INTEGER                                    :: mit, finesse, counter, m, siz, iostat, jj, tt, kk
         real                                       :: Ppass
         real(8)                                    :: f_1, f_2, epsilon
     
@@ -551,7 +552,7 @@ module QKD
             enddo
             allocate(F0_real(2*siz,2*siz))
             call complex_to_realm(siz, -rho_i, F0_real)
-            call SDPA_write_problem(m, 2*siz, j, c_i, F0_real, oj_dbl)
+            call SDPA_write_problem(m, 2*siz, c_i, F0_real, oj_dbl)
             allocate(x_i(m))
             call SDPA_read_solution(m, x_i)
 
