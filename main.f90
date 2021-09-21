@@ -124,7 +124,7 @@ program main
 !---------------------------------------------------------------------
 ! variables of the protocol
     Pz = 0.5        ! Z-basis probability
-    N_start = 0.; N_stop = 0.12; N_steps = 10    ! # of steps 
+    N_start = 0.; N_stop = 0.13; N_steps = 10    ! # of steps 
     Maxit = 10      ! maximum # of iterations
     epsilon = 1E-10 ! convergence tightness
     finesse = 20    ! finesse need for searching tt
@@ -158,10 +158,10 @@ program main
 ! measurments outcomes
 !  1) Alice POVM 
     allocate(POVM_A(4,2,2))
-    POVM_A(1,:,:) = 2*Pz_A(1)*Outer_product(signal(1,:), conjg(signal(1,:)))
-    POVM_A(2,:,:) = 2*Pz_A(2)*Outer_product(signal(2,:), conjg(signal(2,:)))
-    POVM_A(3,:,:) = 2*Pz_A(3)*Outer_product(signal(3,:), conjg(signal(3,:)))
-    POVM_A(4,:,:) = 2*Pz_A(4)*Outer_product(signal(4,:), conjg(signal(4,:)))
+    POVM_A(1,:,:) = 1/sqrt(2.)*Outer_product(signal(1,:), conjg(signal(1,:)))
+    POVM_A(2,:,:) = 1/sqrt(2.)*Outer_product(signal(2,:), conjg(signal(2,:)))
+    POVM_A(3,:,:) = 1/sqrt(2.)*Outer_product(signal(3,:), conjg(signal(3,:)))
+    POVM_A(4,:,:) = 1/sqrt(2.)*Outer_product(signal(4,:), conjg(signal(4,:)))
     ! check if it is a POVM
     do kk=1,size(POVM_A,2)
         do jj=1,size(POVM_A,3)
@@ -231,11 +231,11 @@ program main
                     & Kronecker_product( column(Z(1,:)), &      ! tilde{A}
                     & column(Z(2,:))))                          ! bar{A}
     K_A(2,:,:) = Kronecker_product(sqrtM(POVM_A(3,:,:), sz) ,&  ! A
-                    & Kronecker_product( column(Z(1,:)),&       ! tilde{A}
+                    & Kronecker_product( column(Z(2,:)),&       ! tilde{A}
                     & column(Z(1,:)))) &                        ! bar{A}
                 &+&
                 & Kronecker_product(sqrtM(POVM_A(4,:,:), sz) ,& ! A
-                    & Kronecker_product( column(Z(1,:)), &      ! tilde{A}
+                    & Kronecker_product( column(Z(2,:)), &      ! tilde{A}
                     & column(Z(2,:))))                          ! bar{A}
 
 !    Bob KRAUS:    
@@ -273,28 +273,46 @@ program main
     !  V = |0>_R .o. |0><0|_t{A} .o. |0><0|_b{A} .o. |0><0|_t{B} +
     !    + |1>_R .o. |0><0|_t{A} .o. |1><1|_b{A} .o. |0><0|_t{B}
     allocate(isometry(size(z,1)*size(K_A,2)*size(K_B,2), size(K_A,2)*size(K_B,2) )); isometry = cmplx(0.,0.)
+    ! isometry = Kronecker_product( column(Z(1,:)) , &                            ! R
+    !             & Kronecker_product( id, &                                      ! A
+    !             & Kronecker_product( sigma_00 , &   ! tilde{A}
+    !             & Kronecker_product( sigma_00 , &   ! bar{A}
+    !             & Kronecker_product( id, &                                      ! B
+    !             & Kronecker_product( sigma_00, &    ! tilde{B}
+    !             & id &                                                          ! bar{B}
+    ! &))))))&
+    !         & + &
+    !             & Kronecker_product( column(Z(2,:)), &                          ! R
+    !             & Kronecker_product( id, &                                      ! A
+    !             & Kronecker_product( sigma_00 , &   ! tilde{A}
+    !             & Kronecker_product( sigma_11 , &   ! bar{A}
+    !             & Kronecker_product( id, &                                      ! B
+    !             & Kronecker_product( sigma_00, &    ! tilde{B}
+    !             & id &                                                          ! bar{B}
+    ! &))))))
+
     isometry = Kronecker_product( column(Z(1,:)) , &                            ! R
-                & Kronecker_product( id, &                                      ! A
-                & Kronecker_product( sigma_00 , &   ! tilde{A}
-                & Kronecker_product( sigma_00 , &   ! bar{A}
-                & Kronecker_product( id, &                                      ! B
-                & Kronecker_product( sigma_00, &    ! tilde{B}
-                & id &                                                          ! bar{B}
+        & Kronecker_product( id, &                                      ! A
+        & Kronecker_product( id , &   ! tilde{A}
+        & Kronecker_product( sigma_00 , &   ! bar{A}
+        & Kronecker_product( id, &                                      ! B
+        & Kronecker_product( id, &    ! tilde{B}
+        & id &                                                          ! bar{B}
     &))))))&
-            & + &
-                & Kronecker_product( column(Z(2,:)), &                          ! R
-                & Kronecker_product( id, &                                      ! A
-                & Kronecker_product( sigma_00 , &   ! tilde{A}
-                & Kronecker_product( sigma_11 , &   ! bar{A}
-                & Kronecker_product( id, &                                      ! B
-                & Kronecker_product( sigma_00, &    ! tilde{B}
-                & id &                                                          ! bar{B}
+    & + &
+        & Kronecker_product( column(Z(2,:)), &                          ! R
+        & Kronecker_product( id, &                                      ! A
+        & Kronecker_product( id , &   ! tilde{A}
+        & Kronecker_product( sigma_11 , &   ! bar{A}
+        & Kronecker_product( id, &                                      ! B
+        & Kronecker_product( id, &    ! tilde{B}
+        & id &                                                          ! bar{B}
     &))))))
 
 ! 8* key_map channel Z: decohere R in his basis, which turns R into a classical register denoted Z^R
     allocate(key_map(2, size(isometry,1), size(isometry,1))); key_map = cmplx(0.,0.)
-    key_map(1,:,:) =  Kronecker_product( Outer_product(Z(1,:),Z(1,:)), identity(64_8))
-    key_map(2,:,:) =  Kronecker_product( Outer_product(Z(2,:),Z(2,:)), identity(64_8))
+    key_map(1,:,:) =  Kronecker_product( sigma_00, identity(64_8))
+    key_map(2,:,:) =  Kronecker_product( sigma_11, identity(64_8))
 
 ! 9* define Gamma for constraints
     allocate(Gamma_i(size(POVM, 1)*size(Theta, 1), size(POVM, 2), size(POVM, 3) ))

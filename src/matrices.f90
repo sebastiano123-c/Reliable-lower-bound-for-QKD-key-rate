@@ -458,6 +458,70 @@ module matrices
         deallocate(diagm, vrinv, w, work, rwork, ipiv, vl, vr)
     endfunction logMV
 
+    function logMZ(matrix,n) result(A)
+        !logMZ (
+        !           mat(complex(8)) = 'input matrix'
+        !       )
+        !returns the log of the matrix
+            implicit none
+            integer,INTENT(IN)     :: n
+            complex(8),INTENT(IN)  :: matrix(n,n)
+            Integer                :: info, lwork, nb, ii
+            complex(8),Allocatable :: a(:,:), w(:), work(:), diagm(:,:),&
+            & vrinv(:,:), ipiv(:), vl(:,:),vr(:,:)
+            Real(8),Allocatable    :: rwork(:)
+    
+            Allocate (a(n,n), w(n), rwork(2*n))
+            Allocate (vl(n,n), vr(n,n))
+    
+            ! Read in the matrix A
+            vr = matrix
+            ! Make sure that there is enough workspace for block size nb.
+            nb = 64
+            lwork = (nb+1)*n!, nint(real(wdum(1))))
+            Allocate (work(lwork))
+            call zheev('v','u',n,vr,n,w,WORK,LWORK,rwork,INFO)
+    
+            !Check for convergence.
+            call checkpoint(INFO==0,text="logMZ, ZHEEV::&
+            &(i<0): the i-th argument had an illegal value (program is terminated);\n&
+            &(i=1 to n): the QR algorithm failed to compute the i eigenvalue;\n&
+            &(i=n+1): The eigenvalues could not be reordered;\n&
+            &(i=n+2): After reordering, roundoff changed values. [n,i]:",&
+            &vec = [n, info]&
+            &)
+    
+            allocate(diagm(n,n))
+            diagm = cmplx(0.,0.)
+            do ii = 1,n
+                if(abs(w(ii)) > 1e-10 ) then
+                    diagm(ii, ii) = zlog(W(ii))
+                endif
+            enddo
+    
+            ALLOCATE(vrinv(n,n), ipiv(n))
+            vrinv = VR
+    
+            call zgetrf( n, n, VRinv, n, ipiv, info )
+            !Check for convergence.
+            call checkpoint(&
+            &INFO==0,text='logMZ, zgetrf:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
+            &(i > 0):  if INFO = i, the algorithm failed to converge; i&
+            &off-diagonal elements of an intermediate tridiagonal&
+            &form did not converge to zero.',var=info)
+    
+            call zgetri( n, VRinv, n, ipiv, WORK, LWORK, INFO )
+            !Check for convergence.
+            call checkpoint(&
+            &INFO==0,text='logMZ, zgetri:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
+            &(i > 0):  if INFO = i, the algorithm failed to converge; i&
+            &off-diagonal elements of an intermediate tridiagonal&
+            &form did not converge to zero.',var=info)
+    
+            a = matmul(matmul(VR,diagm),VRinv) 
+            deallocate(diagm, vrinv, w, work, rwork, ipiv, vl, vr)
+        endfunction logMZ
+
     subroutine complex_to_realm(n, cm, rm)
         ! Given an complex matrix cm \in C^{nxn}, this subroutine returns
         ! the real matrix rm \in R^{2nx2n}.

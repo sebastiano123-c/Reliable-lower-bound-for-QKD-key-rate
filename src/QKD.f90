@@ -64,6 +64,7 @@ module QKD
     endsubroutine angle_displacement
 
     subroutine CP_map(rho_input, Kraus_operators, projector, isometry, G_rho, Pprobability_pass)
+    ! G map
         implicit none
         complex(8), INTENT(IN)                  :: rho_input(:,:), kraus_operators(:,:,:), projector(:,:), isometry(:,:)
         complex(8), INTENT(INOUT)               :: G_rho(:,:)
@@ -71,48 +72,34 @@ module QKD
         complex(8), ALLOCATABLE                 :: isometry_H(:,:), rho_tilde(:,:)
         integer                                 :: siz, jj, ios
 
+        ! apply enlarging
         allocate(rho_tilde( size(Kraus_operators,2), size(Kraus_operators,2) ))
         rho_tilde = cmplx(0.,0.)
         do jj = 1, size(Kraus_operators,1)
             rho_tilde = rho_tilde + matmul(Kraus_operators(jj,:,:), matmul(rho_input, conjg(transpose(Kraus_operators(jj,:,:)))))
         enddo
-        ! rho_tilde = rho_tilde / mat_trace(rho_tilde)
-        ! check if the density operator is physical
         siz = size(rho_tilde,1)
-        ! call checkpoint(real(mat_trace(rho_tilde))-1 <= 1e-6, text="CP_map::1 Tr(rho_tilde)/=1",var=mat_trace(rho_tilde))
-        ! call checkpoint(is_hermitian(rho_tilde,siz),text="CP_map::1 rho_tilde is not hermitian",flag=1)
-        ! call checkpoint(is_positive(rho_tilde,siz),text="CP_map::1 rho_tilde is not positive",flag=1)
-        ! apply the projectorector
+ 
+        ! apply the sifting phase
         Pprobability_pass = real(mat_trace( matmul( rho_tilde, projector) ), kind=4)
         rho_tilde = matmul( projector, matmul(rho_tilde, projector))/Pprobability_pass
-        ! rho_tilde = rho_tilde / mat_trace(rho_tilde)
-        ! check if the density operator is physical
-        siz = size(rho_tilde,1)
-        ! call checkpoint(real(mat_trace(rho_tilde))-1 <= 1e-6, text="CP_map::2 Tr(rho_tilde)/=1",var=mat_trace(rho_tilde))
-        ! call checkpoint(is_hermitian(rho_tilde,siz),text="CP_map::2 rho_tilde is not hermitian",flag=1)
-        ! call checkpoint(is_positive(rho_tilde,siz),text="CP_map::2 rho_tilde is not positive",flag=1)
+
         ! isometry
         allocate(isometry_H(size(isometry,2), size(isometry,1) )); isometry_H = cmplx(0.,0.)
         isometry_H = conjg(transpose(isometry))
-
         ! apply the isometry V
         G_rho = matmul(matmul( isometry, rho_tilde ) , isometry_H)
-        ! G_rho = G_rho / mat_trace(G_rho)
-        ! ! check if the density operator is physical
-        ! siz = size(G_rho,1)
-        ! call checkpoint(real(mat_trace(G_rho))-1 <= 1e-6, text="CP_map:: Tr(G_rho)/=1",var=mat_trace(G_rho),flag=1)
-        ! call checkpoint(is_hermitian(G_rho,siz),text="CP_map:: G_rho is not hermitian",flag=1)
-        ! call checkpoint(is_positive(G_rho,siz,1e-2),text="CP_map:: G_rho is not positive",flag=1)
         DEALLOCATE(rho_tilde, isometry_H, stat=ios)
         call checkpoint(ios == 0, text = "CP_map:: deallocation failed. ")
         return
     endsubroutine CP_map
 
     subroutine CP_map_inverse(rho_input, Kraus_operators, projector, isometry, G_rho_inverse)
+    ! inverse G map
         implicit none
         complex(8), INTENT(IN)      :: rho_input(:,:), kraus_operators(:,:,:), projector(:,:), isometry(:,:)
         complex(8), INTENT(INOUT)   :: G_rho_inverse(:,:)
-        real(4)                     :: Pprobability_pass
+        !real(4)                     :: Pprobability_pass
         complex(8), ALLOCATABLE     :: isometry_H(:,:), rho_tilde(:,:)
         integer                     :: jj, ios!, siz
 
@@ -121,37 +108,19 @@ module QKD
         isometry_H = conjg(transpose(isometry))
         ! apply the isometry V
         allocate(rho_tilde(size(isometry_H,1),size(isometry_H,1)))
-        ! call mat_dump( matmul(matmul( isometry_H, rho_input ) , isometry) )
-        ! stop
         rho_tilde = matmul(matmul( isometry_H, rho_input ) , isometry)
-        ! check if the density operator is physical
-        ! siz = size(rho_tilde,1)
-        ! call checkpoint(real(mat_trace(rho_tilde))-1 <= 1e-6, text="CP_map_inverse:: Tr(rho_tilde)/=1",var=mat_trace(rho_tilde))
-        ! call checkpoint(is_hermitian(rho_tilde,siz),text="CP_map_inverse::1 rho_tilde is not hermitian",flag=1)
-        ! call checkpoint(is_positive(rho_tilde,siz),text="CP_map_inverse::1 rho_tilde is not positive",flag=1)
 
         ! apply the projectorector
-        Pprobability_pass = real(mat_trace( matmul( rho_tilde, projector) ), kind=4)
-        rho_tilde = matmul( projector, matmul(rho_tilde, projector))/Pprobability_pass
-        ! check if the density operator is physical
-        ! siz = size(rho_tilde,1)
-        ! call checkpoint(real(mat_trace(rho_tilde))-1 <= 1e-6, text="CP_map_inverse:: Tr(rho_tilde)/=1",var=mat_trace(rho_tilde))
-        ! call checkpoint(is_hermitian(rho_tilde,siz),text="CP_map_inverse::2 rho_tilde is not hermitian",flag=1)
-        ! call checkpoint(is_positive(rho_tilde,siz),text="CP_map_inverse::2 rho_tilde is not positive",flag=1)
+        !Pprobability_pass = real(mat_trace( matmul( rho_tilde, projector) ), kind=4)
+        rho_tilde = matmul( projector, matmul(rho_tilde, projector))!/Pprobability_pass
 
+        ! apply inverse enlarging
         G_rho_inverse = cmplx(0.,0.)
         do jj = 1, size(Kraus_operators,1)
             G_rho_inverse = G_rho_inverse + matmul( conjg(transpose(Kraus_operators(jj,:,:))),&
-                                                    & matmul(rho_tilde, Kraus_operators(jj,:,:)))
+                            & matmul(rho_tilde, Kraus_operators(jj,:,:)))
         enddo
-        ! G_rho_inverse = G_rho_inverse / mat_trace(G_rho_inverse)
 
-        ! ! check if the density operator is physical
-        ! siz = size(G_rho_inverse,1)
-        ! call checkpoint(real(mat_trace(G_rho_inverse))-1 <= 1e-6, text="CP_map_inverse:: Tr(G_rho_inverse)/=1",&
-                        ! &var=mat_trace(G_rho_inverse))
-        ! call checkpoint(is_hermitian(G_rho_inverse,siz),text="CP_map_inverse:: G_rho_inverse is not hermitian",flag=1)
-        ! call checkpoint(is_positive(G_rho_inverse,siz),text="CP_map_inverse:: G_rho_inverse is not positive",flag=1)
         DEALLOCATE(rho_tilde, isometry_H, stat=ios)
         call checkpoint(ios == 0, text = "CP_map_inverse:: deallocation failed. ")
         return
@@ -474,9 +443,9 @@ module QKD
             enddo
             allocate(F0_real(2*siz,2*siz))
             call complex_to_realm(siz,-rho_i,F0_real)
-            call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
+            ! call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
             allocate(x_i(m))
-            call SDPA_read_solution(m,x_i)
+            ! call SDPA_read_solution(m,x_i)
 
             ! find delta_rho
             siz = size(rho_i,1)
