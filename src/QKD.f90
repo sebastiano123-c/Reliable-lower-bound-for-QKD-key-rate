@@ -63,33 +63,37 @@ module QKD
         return
     endsubroutine angle_displacement
 
-    subroutine CP_map(rho_input, Kraus_operators, projector, isometry, G_rho, Pprobability_pass)
+    subroutine CP_map(ri, kr, sf, is, ro, pp)
     ! G map
+    ! Args:
+    !   ri = rho_input
+    !   kr = kraus operators
+    !   sf = sifting phase projector
+    !   is = isometry V
+    !   ro = rho_output
+    !   pp = probability of passing
         implicit none
-        complex(8), INTENT(IN)                  :: rho_input(:,:), kraus_operators(:,:,:), projector(:,:), isometry(:,:)
-        complex(8), INTENT(INOUT)               :: G_rho(:,:)
-        real(4), INTENT(INOUT)                  :: Pprobability_pass
-        complex(8), ALLOCATABLE                 :: isometry_H(:,:), rho_tilde(:,:)
-        integer                                 :: siz, jj, ios
+        complex(8),INTENT(IN)       :: ri(:,:), kr(:,:,:), sf(:,:), is(:,:)
+        complex(8),INTENT(INOUT)    :: ro(:,:)
+        real(4),INTENT(INOUT)       :: pp
+        complex(8),ALLOCATABLE      :: rho_tilde(:,:)
+        integer                     :: siz, jj, ios
 
         ! apply enlarging
-        allocate(rho_tilde( size(Kraus_operators,2), size(Kraus_operators,2) ))
+        allocate(rho_tilde( size(kr,2), size(kr,2) ))
         rho_tilde = cmplx(0.,0.)
-        do jj = 1, size(Kraus_operators,1)
-            rho_tilde = rho_tilde + matmul(Kraus_operators(jj,:,:), matmul(rho_input, conjg(transpose(Kraus_operators(jj,:,:)))))
+        do jj = 1, size(kr,1)
+            rho_tilde=rho_tilde+matmul(matmul(kr(jj,:,:),ri),conjg(transpose(kr(jj,:,:))))
         enddo
         siz = size(rho_tilde,1)
- 
+        
         ! apply the sifting phase
-        Pprobability_pass = real(mat_trace( matmul( rho_tilde, projector) ), kind=4)
-        rho_tilde = matmul( projector, matmul(rho_tilde, projector))/Pprobability_pass
+        pp = real(mat_trace( matmul( rho_tilde, sf) ), kind=4)
+        rho_tilde = matmul( sf, matmul(rho_tilde, sf))/pp
 
-        ! isometry
-        allocate(isometry_H(size(isometry,2), size(isometry,1) )); isometry_H = cmplx(0.,0.)
-        isometry_H = conjg(transpose(isometry))
-        ! apply the isometry V
-        G_rho = matmul(matmul( isometry, rho_tilde ) , isometry_H)
-        DEALLOCATE(rho_tilde, isometry_H, stat=ios)
+        ! apply the is V
+        ro = matmul(matmul( is, rho_tilde ), conjg(transpose(is)))
+        DEALLOCATE(rho_tilde, stat=ios)
         call checkpoint(ios == 0, text = "CP_map:: deallocation failed. ")
         return
     endsubroutine CP_map
@@ -100,15 +104,11 @@ module QKD
         complex(8), INTENT(IN)      :: rho_input(:,:), kraus_operators(:,:,:), projector(:,:), isometry(:,:)
         complex(8), INTENT(INOUT)   :: G_rho_inverse(:,:)
         !real(4)                     :: Pprobability_pass
-        complex(8), ALLOCATABLE     :: isometry_H(:,:), rho_tilde(:,:)
+        complex(8), ALLOCATABLE     :: rho_tilde(:,:)
         integer                     :: jj, ios!, siz
 
-        ! isometry
-        allocate(isometry_H(size(isometry,2), size(isometry,1) )); isometry_H = cmplx(0.,0.)
-        isometry_H = conjg(transpose(isometry))
         ! apply the isometry V
-        allocate(rho_tilde(size(isometry_H,1),size(isometry_H,1)))
-        rho_tilde = matmul(matmul( isometry_H, rho_input ) , isometry)
+        rho_tilde = matmul(matmul( conjg(transpose(isometry)), rho_input ) , isometry)
 
         ! apply the projectorector
         !Pprobability_pass = real(mat_trace( matmul( rho_tilde, projector) ), kind=4)
@@ -121,40 +121,28 @@ module QKD
                             & matmul(rho_tilde, Kraus_operators(jj,:,:)))
         enddo
 
-        DEALLOCATE(rho_tilde, isometry_H, stat=ios)
+        DEALLOCATE(rho_tilde, stat=ios)
         call checkpoint(ios == 0, text = "CP_map_inverse:: deallocation failed. ")
         return
     endsubroutine CP_map_inverse
 
-    function VonNeumannEntropy(matrix, n, tol)
+    function VonNeumannEntropy(rho, n)
+    ! Computes the von Neumann entropy of a given quantum state.
+    !----------------------------------------------------------------
+    ! args
+    !   n = # columns rho
+    !   rho = density matrix
         implicit none
         integer, INTENT(IN)         :: n
-        real, INTENT(IN), optional  :: tol
-        complex(8), intent(in)      :: matrix(n,n)    ! input matrix 
-        real(8), ALLOCATABLE        :: eigval(:)
-        complex(8), ALLOCATABLE     :: mat(:,:), eigvec(:,:) 
-        real(8)                     :: VonNeumannEntropy, tolerance, avl
-        integer                     :: ii
+        complex(8), intent(in)      :: rho(n,n)    ! input rho 
+        real(8)                     :: VonNeumannEntropy
 
-        allocate(mat(n,n))
-        mat = matrix
-        call eigensolver(mat,eigval,eigvec,n)
-
-        VonNeumannEntropy = 0.
-        if(present(tol).eqv..true.) then; tolerance = tol; else; tolerance = 1e-10; endif
-        
-        do ii = 1, n
-            avl = eigval(ii)
-            if(avl <= 0.0)then
-                if( abs(avl) > tolerance )then
-                    WRITE(*,'(A,i0,A,f10.6)')"VonNeumannEntropy:: eigenvalue ",ii," is negative ",avl
-                    ! stop
-                endif
-            else       
-                VonNeumannEntropy = - avl*DLOG(avl) + VonNeumannEntropy
-            endif
-        enddo
-        DEALLOCATE(eigval, mat, eigvec)
+        ! fudge = 1e-13
+        ! new_rho = (1 - fudge) * rho + fudge * identity(int8(n))
+        ! VonNeumannEntropy=-1 *real(mat_trace(matmul(rho,logm(new_rho,n))))
+        print*, "vn"
+        VonNeumannEntropy=-1 *real(mat_trace(matmul(rho,logm(rho,n,1e-10))))
+        print*,"vn2"
     endfunction VonNeumannEntropy
 
     function RelativeEntropy(rho, sigmap, n)
@@ -162,13 +150,26 @@ module QKD
         integer, INTENT(IN)         :: n
         complex(8), intent(in)      :: rho(n,n), sigmap(n,n)    ! input rho
         real(8)                     :: RelativeEntropy
-        real                        tol
+        integer ios,ii,jj,kk
 
-        tol = 1e-2
-        ! rho tr[rho] - sigma tr[sigma] - (rho-sigma)tr[sigma] 
-        RelativeEntropy = VonNeumannEntropy(rho,n,tol)
-        ! RelativeEntropy = RelativeEntropy - VonNeumannEntropy(sigmap,n,tol)
-        RelativeEntropy = ( RelativeEntropy - real(mat_trace(matmul((rho),logMV(sigmap,n))),kind=8))/log(2.)
+        ios=0
+        do ii =1,n
+            do jj=1,n
+                if(abs(rho(ii,jj))>=1e-10)then
+                    print*,ii-1,jj-1,rho(ii,jj)
+                    ios=ios+1
+                endif
+            enddo
+        enddo
+        print*,ios
+        stop
+
+        ! rho tr[rho] - sigma tr[sigma] - (rho-sigma)tr[sigma]
+        RelativeEntropy = - VonNeumannEntropy(rho,n)
+        print*, "ge", RelativeEntropy
+        ! print*,"su", RelativeEntropy
+        RelativeEntropy = ( RelativeEntropy - real(mat_trace(matmul(rho,logm(sigmap,n,1e-10))),kind=8))/log(2.)
+        print*, "su", RelativeEntropy
     endfunction RelativeEntropy
 
     function binary_entropy(p) result(be)
@@ -398,7 +399,7 @@ module QKD
         ! apply key map
             rho_5 = cmplx(0., 0.)
             do jj = 1, size(km, 1)
-                rho_5 = rho_5 + matmul( matmul( km(jj,:,:), rho_4 ), km(jj,:,:) )
+                rho_5 = rho_5 + matmul(matmul(km(jj,:,:),rho_4),km(jj,:,:))
             enddo
             ! check if the density operator is physical
             siz = size(rho_5,1)
@@ -418,7 +419,7 @@ module QKD
             allocate(rho_temp(siz,siz))
             print*,"rho4"
             siz = size(rho_4, 1)
-            logrho = logMV(rho_4,siz)
+            logrho = logm(rho_4,siz,1e-8)
             ! inverse function
             call CP_map_inverse(logrho, kr, sf, is, rho_temp)
             gf = rho_temp
@@ -429,7 +430,8 @@ module QKD
             allocate(rho_temp(siz,siz))
             siz = size(rho_4, 1)
             print*,"rho5"
-            logrho = logMV(rho_5,siz)
+            logrho = logm(rho_5,siz,1e-8)
+            print*,"45fin"
             ! inverse function
             call CP_map_inverse(logrho, kr, sf, is, rho_temp)
             gf = transpose(gf - rho_temp)/log(2.)

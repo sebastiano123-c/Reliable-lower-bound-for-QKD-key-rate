@@ -176,13 +176,12 @@ import cvxpy as cp
 import matplotlib.pyplot as plt
 import time
 
-np.seterr('raise')
 start_time = time.time()
 
 # parameters
 epsilon = 1e-10
 Pz = 0.5
-start, stop, step = 0, 0.15, 20
+start, stop, step = 0., 0.12, 20
 maxit = 20
 finesse = 10
 
@@ -245,6 +244,16 @@ def extend_basism(V, B):
             C = np.append(C, [U], axis=0)
     return C
 
+def quantum_entropy(rho):
+    """
+    Computes the von Neumann entropy of a given quantum state.
+    :param rho: 2D numpy ndarray
+    """
+    fudge = 1e-16
+    sh = rho.shape
+    new_rho = (1 - fudge) * rho + fudge * np.eye(sh[0])
+    return -1 * np.trace(np.matmul(rho, logm(new_rho)))
+
 def relative_entropy(rho, sigma):
     # avlr = np.real(np.linalg.eigvals(rho))
     # avls = np.real(np.linalg.eigvals(sigma))
@@ -259,7 +268,23 @@ def relative_entropy(rho, sigma):
     #                 print(avlr[ii], avls[ii])
     #         else:
     #             print("Q=0 notimply P=0")
-    res = np.trace(rho @ (logm(rho)/np.log(2) - logm(sigma)/np.log(2)))
+    
+    ios=0
+    for ii in range(np.shape(sigma)[0]):
+        for jj in range(np.shape(sigma)[1]):
+            if(abs(rho[ii,jj])>=1e-10):
+                print(ii,jj,rho[ii,jj])
+                ios=ios+1
+    print(ios)
+    exit()
+
+    # tr[ rho @ logm(rho)]
+    res = - quantum_entropy(rho)/np.log(2)
+    # tr[ rho @ logm(sigma)]
+    fudge = 1e-16
+    sh = sigma.shape
+    new_rho = (1 - fudge) * sigma + fudge * np.eye(sh[0])
+    res = res - np.real(np.trace(rho @ logm(new_rho)))/np.log(2)
     return res
 
 def binary_entropy(p):
@@ -429,43 +454,43 @@ Gamma = [G*p for G, p in zip(Gamma, postselect_prob)]
 #---------------------------------------------------------------------
 # After the qubit sending, Alice can measure A using the POVM 
 POVMA = [
-    1/np.sqrt(2)*np.outer( states[0], np.conj(states[0]) ),
-    1/np.sqrt(2)*np.outer( states[1], np.conj(states[1]) ),
-    1/np.sqrt(2)*np.outer( states[2], np.conj(states[2]) ),
-    1/np.sqrt(2)*np.outer( states[3], np.conj(states[3]) )
+    2*Prob[0]*sigma_00,
+    2*Prob[1]*sigma_11,
+    2*Prob[2]*sigma_pp,
+    2*Prob[3]*sigma_mm
 ]
 # which have dimension 4-by-4 and satisfy POVM properties
-if ( np.allclose(sum([ np.conj(ii).T @ ii for ii in POVMA]), id_2 ) == False ): print("sum POVMA**+ POVMA != 1", sum([ np.conj(ii).T @ ii for ii in POVMA]) )
+if ( np.allclose(sum([ ii for ii in POVMA]), id_2 ) == False ): print("sum POVMA**+ POVMA != 1", sum([ ii for ii in POVMA]) )
 for ii in POVMA:
     if(np.allclose( np.conj(ii).T, ii) == False ): print("POVMA NOT hermitian")
     if(np.all( np.linalg.eigvals(ii) < -1e-8)): print("POVMA is NEGATIVE")
 # On the other hand, Bob can measure using the POVM
 POVMB = [
-    1/np.sqrt(2)*np.outer( states[0], np.conj( states[0] ) ),
-    1/np.sqrt(2)*np.outer( states[1], np.conj( states[1] ) ),
-    1/np.sqrt(2)*np.outer( states[2], np.conj( states[2] ) ),
-    1/np.sqrt(2)*np.outer( states[3], np.conj( states[3] ) )
+    2*Prob[0]*sigma_00,
+    2*Prob[1]*sigma_11,
+    2*Prob[2]*sigma_pp,
+    2*Prob[3]*sigma_mm
 ]
 # which have dimension 2-by-2 and satisfy POVM properties
-if ( np.allclose(sum([ np.conj(ii).T @ ii for ii in POVMB]), id_2 ) == False ): print("sum POVMB**+ POVMB != 1", sum([ np.conj(np.transpose(ii)) @ ii for ii in POVMB]) )
+if ( np.allclose(sum([ii for ii in POVMB]), id_2 ) == False ): print("sum POVMB**+ POVMB != 1", sum([ ii for ii in POVMB]) )
 for ii in POVMB:
     if(np.allclose( np.conj(ii).T, ii) == False ): print("POVMB NOT hermitian")
     if(np.all( np.linalg.eigvals(ii) < - 1e-8)): print("POVMB is NEGATIVE")
 
 # PUBLIC ANNOUNCEMENT:
 #   kraus operators of A dim = 16-by-4
-KA = [ np.kron( sqrtm(POVMA[0]) , np.kron( zero[:, np.newaxis], zero[:, np.newaxis])) + 
-       np.kron( sqrtm(POVMA[1]) , np.kron( zero[:, np.newaxis], one[:, np.newaxis])),
-       np.kron( sqrtm(POVMA[2]) , np.kron( one[:, np.newaxis], zero[:, np.newaxis])) + 
-       np.kron( sqrtm(POVMA[3]) , np.kron( one[:, np.newaxis], one[:, np.newaxis]))
+KA = [ np.kron( sqrtm(POVMA[0]), np.kron(zero[:, np.newaxis], zero[:, np.newaxis])) + 
+       np.kron( sqrtm(POVMA[1]), np.kron(zero[:, np.newaxis], one[:, np.newaxis])),
+       np.kron( sqrtm(POVMA[2]), np.kron(one[:, np.newaxis], zero[:, np.newaxis])) + 
+       np.kron( sqrtm(POVMA[3]), np.kron(one[:, np.newaxis], one[:, np.newaxis]))
 ]
 #   which satisfy Kraus property
 if ( np.allclose( np.sum([ np.conj(ii).T @ ii for ii in KA]), id_2) ): print("sum KA**+ KA != 1", sum([ np.conj(ii).T @ ii for ii in KA]) )
 #   kraus operators of B dim = 8-by-4
-KB = [ np.kron( sqrtm(POVMB[0]) , np.kron( zero[:, np.newaxis], zero[:, np.newaxis])) + 
-       np.kron( sqrtm(POVMB[1]) , np.kron( zero[:, np.newaxis], one[:, np.newaxis])),
-       np.kron( sqrtm(POVMB[2]) , np.kron( one[:, np.newaxis], zero[:, np.newaxis])) + 
-       np.kron( sqrtm(POVMB[3]) , np.kron( one[:, np.newaxis], one[:, np.newaxis]))
+KB = [  np.kron(sqrtm(POVMB[0]), np.kron(zero[:, np.newaxis], zero[:, np.newaxis])) + 
+        np.kron(sqrtm(POVMB[1]), np.kron(zero[:, np.newaxis], one[:, np.newaxis])),
+        np.kron(sqrtm(POVMB[2]), np.kron(one[:, np.newaxis], zero[:, np.newaxis])) + 
+        np.kron(sqrtm(POVMB[3]), np.kron(one[:, np.newaxis], one[:, np.newaxis]))
 ]
 #   which satisfy Kraus property
 if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in KB]), id_2 ) ): print("sum KB**+ KB != 1", sum([ np.conj(ii).T @ ii for ii in KB]) )
@@ -481,8 +506,8 @@ if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in K]), id_4 ) ): print("sum
 k0b0 = np.outer([1,0],[1,0]) # |0><0|
 k1b1 = np.outer([0,1],[0,1]) # |1><1|
 #   acts like a projector with dimension 128-by-128
-proj = np.kron( id_2, np.kron( k0b0, np.kron( id_4, np.kron( k0b0, id_2  ))) ) +\
-       np.kron( id_2, np.kron( k1b1, np.kron( id_4, np.kron( k1b1, id_2  ))) )
+proj = np.kron( id_2, np.kron( k0b0, np.kron( id_4, np.kron( k0b0, id_2 ))) ) +\
+       np.kron( id_2, np.kron( k1b1, np.kron( id_4, np.kron( k1b1, id_2 ))) )
        
 # KEY MAP: 
 #   is a isometry which creates a new register R which stores the information on the bits
@@ -586,7 +611,7 @@ qber = np.linspace(start, stop, step)
 step1_bounds, step2_bounds, theoric_bounds = [], [], []
 simple_step1_bounds, simple_step2_bounds = [], []
 for uu in qber:
-    print("\n[ QBER =", uu)
+    print("\n[ QBER =", uu, "]")
     # constructing the 2-by-2 polarization operator
     depo_prob = 2*uu
     depo_sq = [ np.sqrt(1-3/4*depo_prob)*np.array( pauli[0] ),
@@ -606,7 +631,7 @@ for uu in qber:
     if( np.allclose( np.conj(rho_ab).T, rho_ab) == False): print("rho_ab NOT hermitian")
     if( np.all( np.linalg.eigvals(rho_ab) < - 1e-8) ): print("rho_ab is NEGATIVE")
     print("purity of rho_0     =", np.real(np.trace( rho_ab @ rho_ab )))
-
+   
     #constraints
     # povm constraints
     p_j, p_tilde, theta_j, omega_j, gamma_tilde = [], [], [], [], []
@@ -641,28 +666,28 @@ for uu in qber:
     if( np.allclose( np.conj(rho_0).T, rho_0) == False ): print("rho_0 NOT hermitian", rho_0)
     if( np.all( np.linalg.eigvals(rho_0) < - 1e-8)): print("rho_0 is NEGATIVE")
 
-#---------------------------------------------------------------------
-#   for SIMPLE BB84
-#---------------------------------------------------------------------
-    print("*** simple BB84")
-    rho_0 = rho_ab
-    gamma = np.array([uu, uu]) * postselect_prob
-    hp = binary_entropy(uu)
-#  STEP 1
-    f_rho, grad_f = compute_primal(rho_0, [id_4], id_4, id_4, ZA, Gamma, gamma, epsilon, maxit, finesse, 'MOSEK')
-    step1_bound = np.real( f_rho ) - hp
-    if step1_bound<0: step1_bound = 0.
-    simple_step1_bounds.append(step1_bound)    
-    print("Step 1 result is    = ", step1_bound)
-#  STEP 2: lower bound
-    step2_bound = compute_dual(grad_f, Gam, gam)
-    step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound) - hp
-    if step2_bound<0: step2_bound = 0.
-    print("Step 2 result is    = ", step2_bound)
-    simple_step2_bounds.append(step2_bound)
-    th = 1-2*hp
-    if th<0: th = 0.
-    theoric_bounds.append(th)
+# #---------------------------------------------------------------------
+# #   for SIMPLE BB84
+# #---------------------------------------------------------------------
+#     print("*** simple BB84")
+#     rho_0 = rho_ab
+#     gamma = np.array([uu, uu]) * postselect_prob
+#     hp = binary_entropy(uu)
+# #  STEP 1
+#     f_rho, grad_f = compute_primal(rho_0, [id_4], id_4, id_4, ZA, Gamma, gamma, epsilon, maxit, finesse, 'MOSEK')
+#     step1_bound = np.real( f_rho ) - hp
+#     if step1_bound<0: step1_bound = 0.
+#     simple_step1_bounds.append(step1_bound)    
+#     print("Step 1 result is    = ", step1_bound)
+# #  STEP 2: lower bound
+#     step2_bound = compute_dual(grad_f, Gam, gam)
+#     step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound) - hp
+#     if step2_bound<0: step2_bound = 0.
+#     print("Step 2 result is    = ", step2_bound)
+#     simple_step2_bounds.append(step2_bound)
+#     th = 1-2*hp
+#     if th<0: th = 0.
+#     theoric_bounds.append(th)
     
 #---------------------------------------------------------------------
 #   for RECONCILIATION SCHEME
@@ -677,6 +702,7 @@ for uu in qber:
     if step1_bound<0: step1_bound = 0.
     step1_bounds.append(step1_bound)
     print("Step 1 result is    = ", step1_bound)
+
 #  STEP 2: lower bound
     step2_bound = compute_dual(grad_f, Gam, gam)
     step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound) - hp

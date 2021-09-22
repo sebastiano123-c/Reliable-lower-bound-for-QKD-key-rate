@@ -93,233 +93,246 @@ program main
     use QKD
     implicit none
 
-! Declarations
-    complex(8), dimension(4)                    :: psi_aa
-    complex(8), dimension(2,2)                  :: Z, X, id, null_matrix, sigma_00,sigma_11,&
-                                                &sigma_pp, sigma_mm
-    complex(8), dimension(4,4)                  :: rho_ab, id_4
-    complex(8), dimension(:,:,:), ALLOCATABLE   :: POVM_A, POVM_B, POVM, K_A, K_B, Kraus, &
-                                                & Gamma_i, Gamma_tilde, key_map, Theta, &
-                                                & tttemp, Omega_j, Gamma_tilde_k
-    complex(8), dimension(:,:), ALLOCATABLE     :: rho_temp, sifting, &
-                                                & isometry, rho_0, grad_f
-    real(8), dimension(:), ALLOCATABLE          :: p_i, p_tilde, theta_j
-    complex(8)                                  :: signal(4,2), Omega(16,4,4), pauli(4,2,2), depo(4,4,4)
-    real(8)                                     :: f_rho, epsilon, uu, sp
-    real                                        :: Pz, Pz_A(4), Pz_B(4), trn
-    real                                        :: start, finish, N_start, N_stop, hp, th
-    real                                        :: PI
-    INTEGER                                     :: ios, ii, jj, kk, ll, mm, sz, Maxit,&
-                                                & finesse, N_steps
-    INTEGER(8)                                  :: KeyLength
+!---------------------------------------------------------------------
+!   costants and declarations
+!---------------------------------------------------------------------
+ ! variables of the protocol
+    real, PARAMETER                             :: N_start = 0.0, N_stop = 0.13
+    integer, PARAMETER                          :: N_steps = 20
+    integer, PARAMETER                          :: Maxit = 20
+    integer, PARAMETER                          :: finesse = 20
+    real(8), PARAMETER                          :: epsilon = 1E-10
+ ! dimensions
+    INTEGER                                     :: da, db, dtot, nst                        
+    parameter                                   (da=2, db=2, dtot=da*db, nst=4)             ! nst = # signal states
+    complex(8)                                  :: basis(nst,da)
+    complex(8)                                  :: signal(nst,db)
+ ! probabilities
+    real                                        :: pz, px, P_A(nst), P_B(nst)
+    parameter                                   (pz=0.5, px=1-pz, p_a=[pz,pz,px,px]/2., p_b=[pz,pz,px,px]/2.)
+ ! identities
+    complex(8)                                  :: id_a(da,da), id_b(db,db), id_t(dtot,dtot)! id_A, id_B
+ ! single qubits Z basis and X basis
+    complex(8), DIMENSION(2,2)                  :: Z, X
+    parameter                                   (Z=reshape([1,0,0,1],[2,2]))
+    parameter                                   (X=reshape([1,1,1,-1]/sqrt(2.),[2,2]))
+ ! classical register projectors
+    complex(8), DIMENSION(2,2)                  :: sigma_00, sigma_11
+    parameter                                   (sigma_00=reshape([1,0,0,0],[2,2]))
+    parameter                                   (sigma_11=reshape([0,0,0,1],[2,2]))
+ ! pauli matrices basis
+    complex(8)                                  :: pauli(4,2,2)
+    parameter                                   (pauli=reshape([ cmplx(1.,0.),cmplx(0.,0.),cmplx(0.,0.),cmplx(1.,0.),&
+                                                                &cmplx(0.,0.),cmplx(1.,0.),cmplx(0.,1.),cmplx(0.,0.),&
+                                                                &cmplx(0.,0.),cmplx(1.,0.),cmplx(0.,-1.),cmplx(0.,0.),&
+                                                                &cmplx(1.,0.),cmplx(0.,0.),cmplx(0.,0.),-cmplx(1.,0.)],[4,2,2]))
+ ! states
+    complex(8)                                  :: psi_aa(dtot), rho_ab(dtot,dtot)          ! states
+ ! dimension of povms
+    INTEGER                                     :: npovma, npovmb, npovm                    ! number of povms
+    parameter                                   (npovma=nst,npovmb=nst,npovm=npovma*npovmb)
+    complex(8)                                  :: axa(npovma,da,da),bxb(npovmb,db,db)      ! projectors
+    complex(8)                                  :: POVM_A(npovma,da,da),POVM_B(npovmb,db,db),POVM(npovm,dtot,dtot)!povms
+ ! kraus operators
+    integer, PARAMETER                          :: nka = 2, nkb = 2, nk = nka*nkb
+    complex(8)                                  :: K_A(nka,4*da,da), K_B(nkb,4*db,db), Kraus(nk,16*dtot,dtot)
+ ! sifting phase
+    integer, PARAMETER                          :: nsi=16*dtot                              ! sifting dimension
+    complex(8)                                  :: sifting(nsi,nsi)
+ ! isometry
+    complex(8)                                  :: isometry(2*nsi,nsi)
+ ! key map
+    INTEGER, PARAMETER                          :: nkm = 2, dkm = 2*nsi
+    complex(8)                                  :: key_map(nkm, dkm, dkm)
+ ! complete set of operators in A
+    integer, PARAMETER                          :: ntheta = da**2
+    complex(8)                                  :: Theta(ntheta, dtot, dtot)
+ ! complet set of observables in AB
+    complex(8)                                  :: Omega(da**2*db**2,dtot,dtot)
+ ! hermitian operators for constraints in AB
+    integer, PARAMETER                          :: ngamma = npovm+ntheta
+    complex(8)                                  :: Gamma_i(ngamma,dtot,dtot)                ! measurments
+    complex(8), allocatable                     :: Gamma_tilde(:,:,:)                       ! gram-schimdt decomposition
+    complex(8), allocatable                     :: Omega_j(:,:,:), Gamma_tilde_k(:,:,:)
+ ! quantum channel
+    complex(8)                                  :: depo(db**2,dtot,dtot) ! depolarization
+ ! constants
+    real, parameter                             :: PI = 4.0*ATAN(1.0)
+ ! others
+    complex(8)                                  :: id(2,2), id_4(4,4), id_1_4(1,4,4)
+    parameter                                   (id = reshape([1,0,0,1],[2,2]))
+    parameter                                   (id_4 = reshape([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],[4,4]))
+    complex(8), ALLOCATABLE                     :: tttemp(:,:,:)
+    complex(8), ALLOCATABLE                     :: rho_temp(:,:), rho_0(:,:), grad_f(:,:)
+    real(8)                                     :: f_rho, uu, sp
+    real                                        :: start, finish, hp, th, trn
+    INTEGER                                     :: ios, ii, jj, kk, ll, mm, sz
     CHARACTER(200)                              :: ps_file
-
-    external trace_fn
-
     ! start computing
     call cpu_time(start)
 
+ ! constants
+    id_a = identity(int8(da))
+    id_b = identity(int8(db))
+    id_b = identity(int8(dtot))
+    id_1_4(1,:,:)=id_4
+
+ ! encoding qubit basis
+    basis=identity(int8(nst))
+
+ ! signal states
+    signal(1,:)=Z(1,:);signal(2,:)=Z(2,:);signal(3,:)=X(1,:);signal(4,:)=X(2,:)
+
+ ! define Theta (i.e. Eve cannot interact with A) 
+ !this defines the fine-grained constraints
+ !     Tr[Theta_j .o. id_b] = theta_j 
+    do jj = 1, 4
+        Theta(jj, :, :) = Kronecker_product( pauli(jj, :, :), id_b )
+    enddo
+
 !---------------------------------------------------------------------
-!   PART 1): definition of the operators
+!   PART 1): operator definitions
 !---------------------------------------------------------------------
-! variables of the protocol
-    Pz = 0.5        ! Z-basis probability
-    N_start = 0.; N_stop = 0.13; N_steps = 10    ! # of steps 
-    Maxit = 10      ! maximum # of iterations
-    epsilon = 1E-10 ! convergence tightness
-    finesse = 20    ! finesse need for searching tt
-
-! constants
-    PI = 4.0*ATAN(1.0)
-    KeyLength = 10
-    null_matrix(1,:) = [cmplx(0.,0.), cmplx(0.,0.)]
-    null_matrix(2,:) = [cmplx(0.,0.), cmplx(0.,0.)]
-    id = identity(2_8)+cmplx(0.,0.); id_4 = identity(4_8)+cmplx(0.,0.)!; id_64 = identity(64_8)+cmplx(0.,0.)
-
-! Pauli matrices
-    pauli(1,:,:)=id;pauli(2,:,:)=sigma("x");pauli(3,:,:)=sigma("y");pauli(4,:,:)=sigma("z")
-
-! define probabilities P_i
-    Pz_A=[Pz/2,Pz/2,(1-Pz)/2,(1-Pz)/2]
-    Pz_B=Pz_A
-
-! encoding qubits
-    Z(1,:)=[1,0];Z(2,:)=[0,1];X(1,:)=[1,1]/sqrt(2.);X(2,:)=[1,-1]/sqrt(2.)
-
-! signal states
-    signal(1,:)=Z(1,:);signal(2,:)=Z(2,:);signal(3,:)=(Z(1,:)+Z(2,:))/sqrt(2.);signal(4,:)=(Z(1,:)-Z(2,:))/sqrt(2.)
-
-! states siftingectors
-    sigma_00 = Outer_product(signal(1,:), conjg(signal(1,:)))
-    sigma_11 = Outer_product(signal(2,:), conjg(signal(2,:)))
-    sigma_pp = Outer_product(signal(3,:), conjg(signal(3,:)))
-    sigma_mm = Outer_product(signal(4,:), conjg(signal(4,:)))
-
-! measurments outcomes
-!  1) Alice POVM 
-    allocate(POVM_A(4,2,2))
-    POVM_A(1,:,:) = 1/sqrt(2.)*Outer_product(signal(1,:), conjg(signal(1,:)))
-    POVM_A(2,:,:) = 1/sqrt(2.)*Outer_product(signal(2,:), conjg(signal(2,:)))
-    POVM_A(3,:,:) = 1/sqrt(2.)*Outer_product(signal(3,:), conjg(signal(3,:)))
-    POVM_A(4,:,:) = 1/sqrt(2.)*Outer_product(signal(4,:), conjg(signal(4,:)))
+ ! measurments outcomes
+ !  1) Alice POVM 
+    axa = cmplx(0.,0.)
+    do ii = 1, npovma
+        axa(ii,:,:) = Outer_product(signal(ii,:), conjg(signal(ii,:)))
+    enddo
+    POVM_A = axa/2
     ! check if it is a POVM
-    do kk=1,size(POVM_A,2)
-        do jj=1,size(POVM_A,3)
+    do kk=1,da
+        do jj=1,da
             call checkpoint( abs(POVM_A(1,kk,jj)+POVM_A(2,kk,jj)+POVM_A(3,kk,jj)+POVM_A(4,kk,jj)&
-                                        & - id(kk,jj))<1e-3,text="Alice POVM is not a POVM",&
-                                        &var=POVM_A(1,kk,jj)+POVM_A(2,kk,jj)+POVM_A(3,kk,jj)+POVM_A(4,kk,jj))
+            &- id_a(kk,jj))<1e-4,text="Alice POVM is not a POVM",&
+            &var=POVM_A(1,kk,jj)+POVM_A(2,kk,jj)+POVM_A(3,kk,jj)+POVM_A(4,kk,jj))
         enddo
     enddo
     ! check hermiticity and positivity
-    sz = size(POVM_A, 2)
-    do jj = 1, size(POVM_A, 1)
-        call checkpoint(is_hermitian(POVM_A(jj,:,:),sz), text="POVM_A not HERMITIAN", var=jj) !hermiticity
-        call checkpoint(is_positive(POVM_A(jj,:,:),sz), text="POVM_A not POSITIVE", var=jj) !positivity
+    do jj = 1, npovma
+        call checkpoint(is_hermitian(POVM_A(jj,:,:),da), text="POVM_A not HERMITIAN", var=jj) !hermiticity
+        call checkpoint(is_positive(POVM_A(jj,:,:),da), text="POVM_A not POSITIVE", var=jj) !positivity
     enddo
 
-!    POVM Bob 
-    allocate(POVM_B(4, 2, 2))
-    POVM_B = POVM_A
+ !    POVM Bob 
+    bxb = cmplx(0.,0.)
+    do ii = 1, npovma
+        bxb(ii,:,:) = Outer_product(signal(ii,:), conjg(signal(ii,:)))
+    enddo
+    POVM_B = bxb/2
     ! check if they sum to identity
-    do kk=1,size(POVM_B,2)
-        do jj=1,size(POVM_B,3)
+    do kk=1,db
+        do jj=1,db
             call checkpoint( abs(POVM_B(1,kk,jj)+POVM_B(2,kk,jj)+POVM_B(3,kk,jj)+POVM_B(4,kk,jj)&
-                                        & - id(kk,jj))<1e-3,text="Bob POVM is not a POVM",&
+                                        & - id_b(kk,jj))<1e-3,text="Bob POVM is not a POVM",&
                                         &var=POVM_B(1,kk,jj)+POVM_B(2,kk,jj)+POVM_B(3,kk,jj)+POVM_B(4,kk,jj))
         enddo
     enddo
     ! check hermiticity and positivity
-    sz = size(POVM_B,2)
-    do jj = 1, size(POVM_B,1)
-        call checkpoint(is_positive(POVM_B(jj,:,:),sz),text= "POVM_B not POSITIVE" ,var=jj) !positivity
-        call checkpoint(is_hermitian(POVM_B(jj,:,:),sz),text="POVM_B not HERMITIAN",var=jj) !hermiticity
+    do jj = 1, npovmb
+        call checkpoint(is_positive(POVM_B(jj,:,:),db),text= "POVM_B not POSITIVE" ,var=jj) !positivity
+        call checkpoint(is_hermitian(POVM_B(jj,:,:),db),text="POVM_B not HERMITIAN",var=jj) !hermiticity
     enddo
 
-!    POVM AB 
-    allocate(POVM(size(POVM_A, 1)*size(POVM_B, 1), size(POVM_A, 2)*size(POVM_B, 2), size(POVM_A, 3)*size(POVM_B, 3)))
-    do kk = 1, size(POVM_B, 1)
-        do jj = 1, size(POVM_A, 1)
-            POVM( jj + (kk -1)*size(POVM_A, 1), :, :) = Kronecker_product( POVM_A(jj,:,:), POVM_B(kk,:,:) )
+ !    POVM AB 
+    do kk = 1, npovmb
+        do jj = 1, npovma
+            POVM( jj + (kk -1)*npovma, :, :) = Kronecker_product( POVM_A(jj,:,:), POVM_B(kk,:,:) )
         enddo
     enddo
     ! check if they sum to identity
-    if(all( (real(POVM(1,:,:)+POVM(2,:,:)+POVM(3,:,:)+POVM(4,:,:) - id_4)) >= 1e-4)) stop 'AB POVM is not a POVM'
+    if(all( (real(POVM(1,:,:)+POVM(2,:,:)+POVM(3,:,:)+POVM(4,:,:) - id_t)) >= 1e-4)) stop 'AB POVM is not a POVM'
     ! check hermiticity and positivity
-    sz = size(POVM,2)
-    do jj = 1, size(POVM,1)
-        call checkpoint(is_positive(POVM(jj,:,:),sz),text= "POVM not POSITIVE" ,var=jj) !positivity
-        call checkpoint(is_hermitian(POVM(jj,:,:),sz),text="POVM not HERMITIAN",var=jj) !hermiticity
+    do jj = 1, npovm
+        call checkpoint(is_positive(POVM(jj,:,:),dtot),text= "POVM not POSITIVE" ,var=jj) !positivity
+        call checkpoint(is_hermitian(POVM(jj,:,:),dtot),text="POVM not HERMITIAN",var=jj) !hermiticity
     enddo
 
-! 4* Theta (i.e. Eve cannot interact with A) 
-    !this defines the fine-grained constraints
-    !     Tr[Theta_j .o. id_2] = theta_j 
-    allocate(Theta(4, 4, 4)); allocate(theta_j(size(Theta, 1)))
-    do jj = 1, 4
-        Theta(jj, :, :) = Kronecker_product( pauli(jj, :, :), id )
-    enddo
-    
-! 5* Kraus representation of announcements
-!    Alice KRAUS:
-    allocate(K_A(2,8,2))
-    sz = size(POVM_A(1,:,:),2)  
-    K_A(1,:,:) = Kronecker_product(sqrtM(POVM_A(1,:,:), sz) ,&  ! A
+ ! 5* Kraus representation of announcements
+ !    Alice KRAUS:
+    K_A(1,:,:) = Kronecker_product(sqrtM(POVM_A(1,:,:), da) ,&  ! A
                     & Kronecker_product( column(Z(1,:)),&       ! tilde{A}
                     & column(Z(1,:)))) &                        ! bar{A}
                 &+&
-                & Kronecker_product(sqrtM(POVM_A(2,:,:), sz) ,& ! A
+                & Kronecker_product(sqrtM(POVM_A(2,:,:), da) ,& ! A
                     & Kronecker_product( column(Z(1,:)), &      ! tilde{A}
                     & column(Z(2,:))))                          ! bar{A}
-    K_A(2,:,:) = Kronecker_product(sqrtM(POVM_A(3,:,:), sz) ,&  ! A
+    K_A(2,:,:) = Kronecker_product(sqrtM(POVM_A(3,:,:), da) ,&  ! A
                     & Kronecker_product( column(Z(2,:)),&       ! tilde{A}
                     & column(Z(1,:)))) &                        ! bar{A}
                 &+&
-                & Kronecker_product(sqrtM(POVM_A(4,:,:), sz) ,& ! A
+                & Kronecker_product(sqrtM(POVM_A(4,:,:), da) ,& ! A
                     & Kronecker_product( column(Z(2,:)), &      ! tilde{A}
                     & column(Z(2,:))))                          ! bar{A}
 
-!    Bob KRAUS:    
-    allocate(K_B(2,8,2))
-    sz = size(POVM_B(1,:,:),2)
-    K_B(1,:,:) = Kronecker_product(Kronecker_product( sqrtM(POVM_B(1,:,:),sz) , column(Z(1,:))), column(Z(1,:)))+&
-                &Kronecker_product(Kronecker_product( sqrtM(POVM_B(2,:,:),sz) , column(Z(1,:))), column(Z(2,:)))
-    K_B(2,:,:) = Kronecker_product(Kronecker_product( sqrtM(POVM_B(3,:,:),sz) , column(Z(2,:))), column(Z(1,:)))+&
-                &Kronecker_product(Kronecker_product( sqrtM(POVM_B(4,:,:),sz) , column(Z(2,:))), column(Z(2,:)))
-!    TOTAL KRAUS Alice tensor product Bob gives the sifting operator in Kraus representation
-    allocate(Kraus( size(K_A,1)*size(K_B,1), size(K_A,2)*size(K_B,2), size(K_A,3)*size(K_B,3) ))
-    do kk = 1, size(K_B,1)
-        do jj = 1, size(K_A,1)
-            Kraus( jj + (kk -1)*size(K_A, 1), :, :) = Kronecker_product(K_A(jj,:,:), K_B(kk,:,:))
+ !    Bob KRAUS:    
+    K_B(1,:,:) = Kronecker_product(sqrtM(POVM_B(1,:,:), db) ,&  ! A
+                    & Kronecker_product( column(Z(1,:)),&       ! tilde{A}
+                    & column(Z(1,:)))) &                        ! bar{A}
+                &+&
+                & Kronecker_product(sqrtM(POVM_B(2,:,:), db) ,& ! A
+                    & Kronecker_product( column(Z(1,:)), &      ! tilde{A}
+                    & column(Z(2,:))))                          ! bar{A}
+    K_B(2,:,:) = Kronecker_product(sqrtM(POVM_B(3,:,:), db) ,&  ! A
+                    & Kronecker_product( column(Z(2,:)),&       ! tilde{A}
+                    & column(Z(1,:)))) &                        ! bar{A}
+                &+&
+                & Kronecker_product(sqrtM(POVM_B(4,:,:), db) ,& ! A
+                    & Kronecker_product( column(Z(2,:)), &      ! tilde{A}
+                    & column(Z(2,:))))                          ! bar{A}
+ !    TOTAL KRAUS Alice tensor product Bob gives the sifting operator in Kraus representation
+    do kk = 1, nka
+        do jj = 1, nkb
+            Kraus(jj+(kk-1)*nka,:,:)=Kronecker_product(K_A(kk,:,:),K_B(jj,:,:))
         enddo
     enddo
 
-! 6* calculate the projector of the sifting-phase
-    allocate(sifting(size(K_A,2)*size(K_B,2), size(K_A,2)*size(K_B,2)))
-    sifting = Kronecker_product( id , &                                        ! A
+ ! 6* calculate the projector of the sifting-phase
+    sifting = Kronecker_product( id_a , &                                        ! A
             & Kronecker_product( sigma_00 , &   ! tilde{A}
-            & Kronecker_product( id, &                                      ! bar{A}
+            & Kronecker_product( id_b, &                                      ! bar{A}
             & Kronecker_product( id, &                                      ! B 
             & Kronecker_product( sigma_00, &      ! tilde{B}
             & id))))) &                                                     ! bar{B}
         & + &                                                               !+                        
-            & Kronecker_product( id , &                                     ! A
+            & Kronecker_product( id_a , &                                     ! A
             & Kronecker_product( sigma_11 , &     ! tilde{A}
-            & Kronecker_product( id, &                                      ! bar{A}
+            & Kronecker_product( id_b, &                                      ! bar{A}
             & Kronecker_product( id, &                                      ! B
             & Kronecker_product( sigma_11, &      ! tilde{B}
             & id)))))                                                       ! bar{B}
 
-! 7* consider the isometry V such that Alice stores 0 (1) in her key when she obtains outcome P1 or P3 (P2 or P4)
+ ! 7* consider the isometry V such that Alice stores 0 (1) in her key when she obtains outcome P1 or P3 (P2 or P4)
     !  V = |0>_R .o. |0><0|_t{A} .o. |0><0|_b{A} .o. |0><0|_t{B} +
     !    + |1>_R .o. |0><0|_t{A} .o. |1><1|_b{A} .o. |0><0|_t{B}
-    allocate(isometry(size(z,1)*size(K_A,2)*size(K_B,2), size(K_A,2)*size(K_B,2) )); isometry = cmplx(0.,0.)
-    ! isometry = Kronecker_product( column(Z(1,:)) , &                            ! R
-    !             & Kronecker_product( id, &                                      ! A
-    !             & Kronecker_product( sigma_00 , &   ! tilde{A}
-    !             & Kronecker_product( sigma_00 , &   ! bar{A}
-    !             & Kronecker_product( id, &                                      ! B
-    !             & Kronecker_product( sigma_00, &    ! tilde{B}
-    !             & id &                                                          ! bar{B}
-    ! &))))))&
-    !         & + &
-    !             & Kronecker_product( column(Z(2,:)), &                          ! R
-    !             & Kronecker_product( id, &                                      ! A
-    !             & Kronecker_product( sigma_00 , &   ! tilde{A}
-    !             & Kronecker_product( sigma_11 , &   ! bar{A}
-    !             & Kronecker_product( id, &                                      ! B
-    !             & Kronecker_product( sigma_00, &    ! tilde{B}
-    !             & id &                                                          ! bar{B}
-    ! &))))))
-
     isometry = Kronecker_product( column(Z(1,:)) , &                            ! R
-        & Kronecker_product( id, &                                      ! A
+        & Kronecker_product( id_a, &                                      ! A
         & Kronecker_product( id , &   ! tilde{A}
         & Kronecker_product( sigma_00 , &   ! bar{A}
-        & Kronecker_product( id, &                                      ! B
+        & Kronecker_product( id_b, &                                      ! B
         & Kronecker_product( id, &    ! tilde{B}
         & id &                                                          ! bar{B}
     &))))))&
     & + &
         & Kronecker_product( column(Z(2,:)), &                          ! R
-        & Kronecker_product( id, &                                      ! A
+        & Kronecker_product( id_a, &                                      ! A
         & Kronecker_product( id , &   ! tilde{A}
         & Kronecker_product( sigma_11 , &   ! bar{A}
-        & Kronecker_product( id, &                                      ! B
+        & Kronecker_product( id_b, &                                      ! B
         & Kronecker_product( id, &    ! tilde{B}
         & id &                                                          ! bar{B}
     &))))))
 
-! 8* key_map channel Z: decohere R in his basis, which turns R into a classical register denoted Z^R
-    allocate(key_map(2, size(isometry,1), size(isometry,1))); key_map = cmplx(0.,0.)
-    key_map(1,:,:) =  Kronecker_product( sigma_00, identity(64_8))
-    key_map(2,:,:) =  Kronecker_product( sigma_11, identity(64_8))
+ ! 8* key_map channel Z: decohere R in his basis, which turns R into a classical register denoted Z^R
+    key_map = cmplx(0.,0.)
+    key_map(1,:,:) =  Kronecker_product(sigma_00, identity(int8(nsi)))
+    key_map(2,:,:) =  Kronecker_product(sigma_11, identity(int8(nsi)))
 
-! 9* define Gamma for constraints
-    allocate(Gamma_i(size(POVM, 1)*size(Theta, 1), size(POVM, 2), size(POVM, 3) ))
-    Gamma_i(:size(POVM, 1), :, :) = POVM
-    Gamma_i(size(POVM, 1) + 1:, :, :) = Theta
+ ! 9* define Gamma for constraints
+    Gamma_i(:npovm,:,:) = POVM
+    Gamma_i(npovm + 1:,:,:) = Theta
 
-! 10* define the set of Hermitian operators for tomography
+ ! 10* define the set of Hermitian operators for tomography
     sz = 1
     allocate(Gamma_tilde(sz, size(POVM,2), size(POVM,3)))
     Gamma_tilde(1,:,:) = POVM(1,:,:)
@@ -353,13 +366,15 @@ program main
     do ll = 1, kk
         do mm = 1, kk
             if(ll/=mm) then
-                if(abs(mat_trace(matmul(Gamma_tilde(ll,:,:),Gamma_tilde(mm,:,:))))>=1e-8) stop "Gamma_tilde is NOT orthogonal."
+                if(abs(mat_trace(matmul(Gamma_tilde(ll,:,:),Gamma_tilde(mm,:,:))))>=1e-8)then! stop "Gamma_tilde is NOT orthogonal."
+                    print*,"Gamma_tilde is NOT orthogonal.", ll,mm,abs(mat_trace(matmul(Gamma_tilde(ll,:,:),Gamma_tilde(mm,:,:))))
+                endif
             endif
         enddo
     enddo
     Gamma_tilde_k = Gamma_tilde
 
-! 11* Omega, set of tomographycally observables to complete the basis
+ ! 11* Omega, set of tomographycally observables to complete the basis
     do ll = 1, size(pauli, 1)
         do mm = 1, size(pauli, 1)
             allocate(rho_temp(size(pauli,2)*size(pauli,2), size(pauli,3)*size(pauli,3)))
@@ -383,7 +398,9 @@ program main
     do ll = 1, size(Gamma_tilde,1)
         do mm = 1, size(Gamma_tilde,1)
             if(ll/=mm) then
-                if(abs(mat_trace(matmul(Gamma_tilde(ll,:,:),Gamma_tilde(mm,:,:))))>=1e-8) stop "Gamma_tildes are NOT orthogonal."
+                if(abs(mat_trace(matmul(Gamma_tilde(ll,:,:),Gamma_tilde(mm,:,:))))>=1e-8)then! stop "Gamma_tildes are NOT orthogonal."
+                    print*, "Gamma_tildes are NOT orthogonal.",ll,mm,abs(mat_trace(matmul(Gamma_tilde(ll,:,:),Gamma_tilde(mm,:,:))))
+                endif
             endif
         enddo
     enddo
@@ -392,18 +409,18 @@ program main
 !---------------------------------------------------------------------
 !   PART 2): algorithm
 !---------------------------------------------------------------------
-! gnuplot output file for graphics
+ ! gnuplot output file for graphics
     ps_file = "QKD.ps"
     open(unit=10, file=ps_file)
     write(10, '("$data<< EOD")')
 
-! 1* construct the state between A and B
-!    create Psi_AA'
+ ! 1* construct the state between A and B
+ !    create Psi_AA'
     psi_aa = cmplx(0., 0.)
     do jj = 1, 4
-        psi_aa = psi_aa + Pz_A(jj)*row(kronecker_product( column(signal(jj,:)), column(signal(jj,:)) ))
+        psi_aa = psi_aa + p_a(jj)*row(kronecker_product( column(signal(jj,:)), column(signal(jj,:)) ))
     enddo
-!    creation of the density matrix rho_{AB} given by (eqn.1)
+ !    creation of the density matrix rho_{AB} given by (eqn.1)
     rho_ab = Outer_product( psi_aa, conjg(psi_aa) )
     !!!! PAY ATTENTION THIS PASS NORMALIZE IN ANY CASE !!!!
     rho_AB = rho_AB / real(mat_trace(rho_AB))
@@ -414,7 +431,7 @@ program main
     call checkpoint(is_positive(rho_AB,sz), text="rho_AB is not positive")
     print*, "rho_ab purity", real(mat_trace(matmul( rho_ab, rho_ab )))
 
-! 2* starting point of the algorithm
+ ! 2* starting point of the algorithm
     do ii = 0, N_steps
         ! qber
         uu = dble(N_stop - N_start)*dble(ii)/dble(N_steps)
@@ -426,13 +443,13 @@ program main
         th = 1. - 2.* hp
         if (th <= 1e-10) th = 0.
 
-! 3* Depolarization channel:
-        depo(1,:,:) = sqrt(1-3./4.*uu)*kronecker_product( id, pauli(1,:,:) )
-        depo(2,:,:) =      sqrt(uu/4.)*kronecker_product( id, pauli(2,:,:) )
-        depo(3,:,:) =      sqrt(uu/4.)*kronecker_product( id, pauli(3,:,:) )
-        depo(4,:,:) =      sqrt(uu/4.)*kronecker_product( id, pauli(4,:,:) )
+ ! 3* Depolarization channel:
+        depo(1,:,:) = sqrt(1-3./4.*uu)*kronecker_product( id_a, pauli(1,:,:) )
+        depo(2,:,:) =      sqrt(uu/4.)*kronecker_product( id_a, pauli(2,:,:) )
+        depo(3,:,:) =      sqrt(uu/4.)*kronecker_product( id_a, pauli(3,:,:) )
+        depo(4,:,:) =      sqrt(uu/4.)*kronecker_product( id_a, pauli(4,:,:) )
 
-! 4* action on the state rho
+ ! 4* action on the state rho
         sz = size(rho_AB, 1)
         allocate(rho_temp(sz, sz)); rho_temp = cmplx(0.,0.)
 
@@ -447,16 +464,8 @@ program main
         call checkpoint(is_positive(rho_AB,sz), text="rho_AB is not positive")
         deallocate(rho_temp)
         print*, "purity after quantum channel", real(mat_trace(matmul(rho_ab,rho_ab)))
-        
-! 6* Calculate the constraints
-        allocate(p_i(size(Gamma_i, 1)))
-        allocate(p_tilde(size(Gamma_tilde_k, 1)))
-        do jj = 1, size(p_i)
-            p_i(jj) = real(mat_trace( matmul( Gamma_i(jj,:,:), rho_ab) ))
-        enddo
-        do jj = 1, size(p_tilde)
-            p_tilde(jj) = real(mat_trace( matmul( Gamma_tilde_k(jj,:,:), rho_ab) ))
-        enddo
+
+ ! 6* Calculate the constraints
         ! create rho_0
         allocate(rho_0(size(rho_ab, 1), size(rho_ab, 2)))
         rho_0 = cmplx(0., 0.)
@@ -467,23 +476,24 @@ program main
             rho_0 = rho_0 + mat_trace(matmul(Omega_j(jj,:,:),rho_ab))*Omega_j(jj,:,:)
         enddo
         rho_0 = rho_0 / mat_trace(rho_0) ! renormalization
-        !rho_0 = rho_ab
+        ! rho_0 = rho_ab
         ! check if rho_0 is physical
         sz = size(rho_0, 1)
         call checkpoint(real(mat_trace(rho_0))-1 <= 1e-8, text="Tr(rho_0)/=1",var=mat_trace(rho_0))
         call checkpoint(is_hermitian(rho_0,sz), text="rho_0 is not hermitian", mat=rho_0)
         call checkpoint(is_positive(rho_0,sz), text="rho_0 is not positive")
 
-! ALGORITHM 
-! 7* STEP 1
+ ! ALGORITHM 
+ ! 7* STEP 1
         ALLOCATE(grad_f(size(rho_0, 1), size(rho_0,2)))
+        ! call compute_primal(rho_0, f_rho, grad_f, id_1_4, id_4, id_4, key_map_test, Omega_j, Maxit, finesse, epsilon)
         call compute_primal(rho_0, f_rho, grad_f, Kraus, sifting, isometry, key_map, Omega_j, Maxit, finesse, epsilon)
 
-! 8* STEP 2
+ ! 8* STEP 2
         sp = f_rho - hp
         if(trn<1E-10)trn=0.
         write(10,'(es20.10," ",es20.10," ",es20.10," ",es20.10)')uu, sp, th, f_rho
-        deallocate(rho_0, grad_f, p_i, p_tilde, stat=ios)
+        deallocate(rho_0, grad_f, stat=ios)
         call checkpoint(ios==0, text="rho_0 deallocation failed")
     enddo
     write(10,'("EOD")')
@@ -497,12 +507,10 @@ program main
     write(10,'("#set xr [:]")')    
     write(10,'(A)')"p $data u 1:2 w lp t 'step 1', $data u 1:3 w lp t 'theoric', $data u 1:4 w lp t 'f_{\rho}'"
     close(10)!close file
-!   END PROCEDURE
-!---------------------------------------------------------------------------------------------------------------------
+ !   END PROCEDURE
 
 ! deallocation
-    DEALLOCATE(POVM_A, POVM_B, POVM, Gamma_i, Gamma_tilde, K_A, K_B, Kraus, isometry,&
-                & sifting, key_map, Omega_j, stat=ios)
+    DEALLOCATE(Gamma_tilde, Omega_j, stat=ios)
     call checkpoint(ios==0, text="final deallocation failed")
     
 ! end computation

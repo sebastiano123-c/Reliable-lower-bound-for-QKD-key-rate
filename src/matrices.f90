@@ -49,7 +49,6 @@ module matrices
         return
     endfunction DET_real
 
-
     real(8) function DET_complex(cc)
         complex(8) cc(:,:)
         real(8) rr(2*size(cc,dim=1),2*size(cc,dim=2))
@@ -270,69 +269,6 @@ module matrices
         implicit none
         integer, INTENT(IN)     :: n
         complex(8), INTENT(IN)  :: matrix(n,n)
-        Integer                 :: info, lda, ldc, ldd, ldvs, lwork, sdim, nb,ii
-        complex(8), Allocatable :: a(:, :), c(:, :), d(:, :), vs(:, :), &
-                                    w(:), work(:), sqr(:,:), vrinv(:,:), ipiv(:)
-        complex(8)              :: wdum(1)
-        Real(8), Allocatable    :: rwork(:)
-        Logical                 :: dummy(1), select
-        Intrinsic               :: cmplx, epsilon, max, nint, real
-        nb = 64; lda = n; ldc = n; ldd = n; ldvs = n
-        Allocate (a(lda,n), vs(ldvs,n), c(ldc,n), d(ldd,n), w(n), rwork(n))
-  
-        ! Use routine workspace query to get optimal workspace.
-        lwork = -1
-        Call zgees('V', 'N', select, n, a, lda, sdim, w, vs, ldvs, wdum, lwork, rwork, dummy, info)
-  
-        ! Make sure that there is enough workspace for block size nb.
-        lwork = max((nb+1)*n, nint(real(wdum(1))))
-        Allocate (work(lwork))
-  
-        ! Read in the matrix A
-        a = matrix
-
-        ! Find the Schur factorization of A
-        Call zgees('V', 'N', select, n, a, lda, sdim, w, vs, ldvs, work, lwork, rwork, dummy, info)       
-        !Check for convergence.
-        call checkpoint( INFO == 0, text= 'sqrtM, zgees:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
-                                            &(i > 0):  if INFO = i, the algorithm failed to converge; i&
-                                            &off-diagonal elements of an intermediate tridiagonal&
-                                            &form did not converge to zero.',var = info)
-        allocate(sqr(n,n))
-        sqr = cmplx(0.,0.)
-        do ii = 1,n
-            if(abs(w(ii)) > 1e-8 ) then
-                sqr(ii, ii) = sqrt(W(ii))
-            endif
-        enddo
-
-        ALLOCATE(vrinv(size(vs,1),size(vs,2)), ipiv(n))
-        vrinv = vs
-    
-        call zgetrf( n, n, VRinv, n, ipiv, info )
-        !Check for convergence.
-        call checkpoint( INFO == 0, text= 'sqrtM, zgetrf:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
-                                            &(i > 0):  if INFO = i, the algorithm failed to converge; i&
-                                            &off-diagonal elements of an intermediate tridiagonal&
-                                            &form did not converge to zero.',var = info)    
-        call zgetri( n, VRinv, n, ipiv, WORK, LWORK, INFO )
-        !Check for convergence.
-        call checkpoint( INFO == 0, text= 'sqrtM, zgetri:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
-                                            &(i > 0):  if INFO = i, the algorithm failed to converge; i&
-                                            &off-diagonal elements of an intermediate tridiagonal&
-                                            &form did not converge to zero.',var = info)        
-        a = matmul(matmul(vs,sqr),VRinv)  
-        deallocate(sqr, vs, c, vrinv, w, work, rwork, ipiv)
-    endfunction sqrtM
-
-    function logM(matrix,n) result(A)
-    !logM (
-    !           mat(complex(8)) = 'input matrix'
-    !       )
-    !returns the log of the matrix
-        implicit none
-        integer, INTENT(IN)     :: n
-        complex(8), INTENT(IN)  :: matrix(n,n)
         Integer                 :: info, lda, ldc, ldd, ldvs, lwork, sdim, nb, ii
         complex(8), Allocatable :: a(:, :), c(:, :), d(:, :), vs(:, :), &
                                     w(:), work(:), sqr(:,:), vrinv(:,:), ipiv(:)
@@ -371,6 +307,86 @@ module matrices
         sqr = cmplx(0.,0.)
         do ii = 1,n
             if(abs(w(ii)) > 1e-8 ) then
+                sqr(ii, ii) = sqrt(W(ii))
+            endif
+        enddo
+
+        ALLOCATE(vrinv(size(vs,1),size(vs,2)), ipiv(n))
+        vrinv = vs
+    
+        call zgetrf( n, n, VRinv, n, ipiv, info )
+        !Check for convergence.
+        call checkpoint( INFO == 0, text= 'logM, zgetrf:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
+                                            &(i > 0):  if INFO = i, the algorithm failed to converge; i&
+                                            &off-diagonal elements of an intermediate tridiagonal&
+                                            &form did not converge to zero.',var = info)    
+        call zgetri( n, VRinv, n, ipiv, WORK, LWORK, INFO )
+        !Check for convergence.
+        call checkpoint( INFO == 0, text= 'logM, zgetri:: (i < 0):  if INFO = -i, the i-th argument had an illegal value&
+                                            &(i > 0):  if INFO = i, the algorithm failed to converge; i&
+                                            &off-diagonal elements of an intermediate tridiagonal&
+                                            &form did not converge to zero.',var = info)        
+        a = matmul(matmul(vs,sqr),VRinv)  
+        deallocate(sqr, vs, c, vrinv, w, work, rwork, ipiv)
+    endfunction sqrtM
+
+    function logM(matrix,n,prec) result(A)
+    !logM (
+    !           mat(complex(8)) = 'input matrix'
+    !       )
+    !returns the log of the matrix
+        implicit none
+        integer, INTENT(IN)     :: n
+        complex(8), INTENT(IN)  :: matrix(n,n)
+        real(4), INTENT(IN), optional  :: prec
+        Integer                 :: info, lda, ldc, ldd, ldvs, lwork, sdim, nb, ii
+        complex(8), Allocatable :: a(:, :), c(:, :), d(:, :), vs(:, :), &
+                                    w(:), work(:), sqr(:,:), vrinv(:,:), ipiv(:)
+        complex(8)              :: wdum(1)
+        Real(8), Allocatable    :: rwork(:)
+        real(8)                 :: fudge
+        Logical                 :: dummy(1), select
+        Intrinsic               :: cmplx, epsilon, max, nint, real
+        nb = 64; lda = n; ldc = n; ldd = n; ldvs = n
+        Allocate (a(lda,n), vs(ldvs,n), c(ldc,n), d(ldd,n), w(n), rwork(n))
+
+        ! precision
+        if(present(prec))then
+            fudge = prec
+        else
+            fudge = 1e-10
+        endif
+
+        ! Read in the matrix A
+        a = (1-fudge)*matrix+fudge*identity(int8(n))
+
+        ! Use routine workspace query to get optimal workspace.
+        lwork = -1
+        Call zgees('V', 'N', select, n, a, lda, sdim, w, vs, ldvs, wdum, lwork, rwork, dummy, info)
+    
+        ! Make sure that there is enough workspace for block size nb.
+        lwork = max((nb+1)*n, nint(real(wdum(1))))
+        Allocate (work(lwork))
+    
+        info = 1        
+        do while(info/=0)
+            ! Read in the matrix A
+            a = (1.-fudge)*matrix + fudge*identity(int8(n))
+
+
+            ! Find the Schur factorization of A
+            Call zgees('V', 'N', select, n, a, lda, sdim, w, vs, ldvs, work, lwork, rwork, dummy, info)       
+
+            if (info/=0)then
+                fudge = fudge*1e5
+                write(*,'(A,es20.10)') "logM:: precision set to ",fudge
+            endif
+        enddo
+
+        allocate(sqr(n,n))
+        sqr = cmplx(0.,0.)
+        do ii = 1,n
+            if(abs(w(ii)) > 1e-8 ) then
                 sqr(ii, ii) = zlog(W(ii))
             endif
         enddo
@@ -394,7 +410,7 @@ module matrices
         deallocate(sqr, vs, c, vrinv, w, work, rwork, ipiv)
     endfunction logM
 
-    function logMV(matrix,n) result(A)
+    function logMV(matrix,n,prec) result(A)
     !logMV (
     !           mat(complex(8)) = 'input matrix'
     !       )
@@ -402,30 +418,38 @@ module matrices
         implicit none
         integer,INTENT(IN)     :: n
         complex(8),INTENT(IN)  :: matrix(n,n)
+        real(4), INTENT(IN), optional::prec
         Integer                :: info, lwork, nb, ii
+        parameter               (nb=64)
         complex(8),Allocatable :: a(:, :), w(:), work(:), diagm(:,:),&
         & vrinv(:,:), ipiv(:), vl(:,:),vr(:,:)
         Real(8),Allocatable    :: rwork(:)
+        real(8)                 fudge
 
         Allocate (a(n,n), w(n), rwork(2*n))
         Allocate (vl(n,n), vr(n,n))
-
-        ! Read in the matrix A
-        a = matrix
-        ! Make sure that there is enough workspace for block size nb.
-        nb = 64
         lwork = (nb+1)*n!, nint(real(wdum(1))))
         Allocate (work(lwork))
-        call zgeev('N','V',n,a,n,w,VL,n,VR,n,WORK,LWORK,rwork,INFO)
 
-        !Check for convergence.
-        call checkpoint(INFO==0,text="logMV, ZGEEV::&
-        &(i<0): the i-th argument had an illegal value (program is terminated);\n&
-        &(i=1 to n): the QR algorithm failed to compute the i eigenvalue;\n&
-        &(i=n+1): The eigenvalues could not be reordered;\n&
-        &(i=n+2): After reordering, roundoff changed values. [n,i]:",&
-        &vec = [n, info]&
-        &)
+        ! precision
+        if(present(prec))then
+            fudge=prec
+        else
+            fudge=1e-16
+        endif
+
+        info = 1        
+        do while(info/=0)
+            ! Read in the matrix A
+            a = (1.-fudge)*matrix + fudge*identity(int8(n))
+
+            call zgeev('N','V',n,a,n,w,VL,n,VR,n,WORK,LWORK,rwork,INFO)
+
+            if (info/=0)then
+                fudge = fudge*10
+                write(*,'(A,es20.10)') "logMV:: precision set to ",fudge
+            endif
+        enddo
 
         allocate(diagm(n,n))
         diagm = cmplx(0.,0.)
