@@ -1,6 +1,8 @@
 !    MODULE: QKD 
 !        *) subroutine: random_key
 !        *) subroutine: depolarizing_channel
+!        *) subroutine: VonNeumannEntropy
+!        *) subroutine: RelativeEntropy
 !        *) subroutine: binary_entropy
 !        *) subroutine: complex_to_realm
 !        *) subroutine: SDPA_write_problem
@@ -162,14 +164,7 @@ module QKD
         new_rho2 = (1-fudge) * rho2 + fudge * identity(int8(n))
     
         RelativeEntropy = -1*VonNeumannEntropy(rho1,n)
-        RelativeEntropy =real( RelativeEntropy - mat_trace(matmul(rho1, logmz(new_rho2,n)))) / log(2.)
-    
-        ! ! rho tr[rho] - sigma tr[sigma] - (rho-sigma)tr[sigma]
-        ! RelativeEntropy = - VonNeumannEntropy(rho,n)
-        ! print*, "ge", RelativeEntropy
-        ! ! print*,"su", RelativeEntropy
-        ! RelativeEntropy = ( RelativeEntropy - real(mat_trace(matmul(rho,logmz(sigmap,n,1e-10))),kind=8))/log(2.)
-        ! print*, "su", RelativeEntropy
+        RelativeEntropy = real( RelativeEntropy - mat_trace(matmul(rho1, logmz(new_rho2,n)))) / log(2.)
     endfunction RelativeEntropy
 
     function binary_entropy(p) result(be)
@@ -358,9 +353,9 @@ module QKD
         REAL(8), INTENT(IN), OPTIONAL              :: ep
         complex(8), dimension(:,:), ALLOCATABLE    :: rho_i, rho_4, rho_5, delta_rho, logrho, rho_temp
         real(8), ALLOCATABLE                       :: oj_dbl(:,:,:), c_i(:), F0_real(:,:), x_i(:)
-        INTEGER                                    :: mit, finesse, counter, m, siz, iostat, jj, tt, kk
+        INTEGER                                    :: mit, finesse, counter, m, siz, iostat, jj, kk
         real                                       :: Ppass
-        real(8)                                    :: f_1, f_2, epsilon
+        real(8)                                    :: f_1, f_2, uu, tt, epsilon
     
         if(present(mi))then
             mit = mi
@@ -472,20 +467,21 @@ module QKD
             f_1 = fr
             siz = size(rho_4, 1)
             do jj = 0, finesse
+                uu = dble(jj)/dble(finesse)
                 rho_4 = cmplx(0., 0.); rho_5 = cmplx(0., 0.)    ! set var to zero
-                call CP_map((rho_i + dble(jj)/dble(finesse)*delta_rho), kr, sf, is, rho_4, Ppass)
+                call CP_map((rho_i + uu*delta_rho), kr, sf, is, rho_4, Ppass)
                 do kk = 1, size(km, 1)
                     rho_5 = rho_5 + matmul( matmul( km(kk,:,:), rho_4 ), km(kk,:,:) )
                 enddo
                 f_2 = RelativeEntropy(rho_4, rho_5, siz)
                 if(f_2<=f_1) then
-                    tt = int(dble(jj)/dble(finesse))
+                    tt = uu
                     f_1 = f_2
                 endif
             enddo
 
         ! if f_1 == fr EXIT
-            if(abs(f_1-fr) <= 1e-10) exit
+            if(abs(f_1-fr) <= 1e-8) exit
         ! assign new rho_i
             rho_i = rho_i + delta_rho * tt
         ! increment counter

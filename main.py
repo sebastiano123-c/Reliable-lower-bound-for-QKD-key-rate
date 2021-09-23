@@ -667,28 +667,28 @@ for uu in qber:
     if( np.allclose( np.conj(rho_0).T, rho_0) == False ): print("rho_0 NOT hermitian", rho_0)
     if( np.all( np.linalg.eigvals(rho_0) < - 1e-8)): print("rho_0 is NEGATIVE")
 
-# #---------------------------------------------------------------------
-# #   for SIMPLE BB84
-# #---------------------------------------------------------------------
-#     print("*** simple BB84")
-#     rho_0 = rho_ab
-#     gamma = np.array([uu, uu]) * postselect_prob
-#     hp = binary_entropy(uu)
-# #  STEP 1
-#     f_rho, grad_f = compute_primal(rho_0, [id_4], id_4, id_4, ZA, Gamma, gamma, epsilon, maxit, finesse, 'MOSEK')
-#     step1_bound = np.real( f_rho ) - hp
-#     if step1_bound<0: step1_bound = 0.
-#     simple_step1_bounds.append(step1_bound)    
-#     print("Step 1 result is    = ", step1_bound)
-# #  STEP 2: lower bound
-#     step2_bound = compute_dual(grad_f, Gam, gam)
-#     step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound) - hp
-#     if step2_bound<0: step2_bound = 0.
-#     print("Step 2 result is    = ", step2_bound)
-#     simple_step2_bounds.append(step2_bound)
-#     th = 1-2*hp
-#     if th<0: th = 0.
-#     theoric_bounds.append(th)
+#---------------------------------------------------------------------
+#   for SIMPLE BB84
+#---------------------------------------------------------------------
+    print("*** simple BB84")
+    rho_0 = rho_ab
+    gamma = np.array([uu, uu]) * postselect_prob
+    hp = binary_entropy(uu)
+#  STEP 1
+    f_rho, grad_f = compute_primal(rho_0, [id_4], id_4, id_4, ZA, Gamma, gamma, epsilon, maxit, finesse, 'MOSEK')
+    step1_bound = np.real( f_rho ) - hp
+    if step1_bound<0: step1_bound = 0.
+    simple_step1_bounds.append(step1_bound)    
+    print("Step 1 result is    = ", step1_bound)
+#  STEP 2: lower bound
+    step2_bound = compute_dual(grad_f, Gam, gam)
+    step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound) - hp
+    if step2_bound<0: step2_bound = 0.
+    print("Step 2 result is    = ", step2_bound)
+    simple_step2_bounds.append(step2_bound)
+    th = 1-2*hp
+    if th<0: th = 0.
+    theoric_bounds.append(th)
     
 #---------------------------------------------------------------------
 #   for RECONCILIATION SCHEME

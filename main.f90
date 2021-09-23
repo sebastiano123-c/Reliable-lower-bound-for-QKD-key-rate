@@ -97,7 +97,7 @@ program main
 !   costants and declarations
 !---------------------------------------------------------------------
  ! variables of the protocol
-    real, PARAMETER                             :: N_start = 0.0, N_stop = 0.13
+    real, PARAMETER                             :: N_start = 0.0, N_stop = 0.12
     integer, PARAMETER                          :: N_steps = 20
     integer, PARAMETER                          :: Maxit = 20
     integer, PARAMETER                          :: finesse = 20
@@ -183,6 +183,18 @@ program main
  ! signal states
     signal(1,:)=Z(1,:);signal(2,:)=Z(2,:);signal(3,:)=X(1,:);signal(4,:)=X(2,:)
 
+ ! Alice measurments outcomes
+    axa = cmplx(0.,0.)
+    do ii = 1, npovma
+        axa(ii,:,:) = Outer_product(signal(ii,:), conjg(signal(ii,:)))
+    enddo
+
+ ! Bob measurments outcomes
+    bxb = cmplx(0.,0.)
+    do ii = 1, npovma
+        bxb(ii,:,:) = Outer_product(signal(ii,:), conjg(signal(ii,:)))
+    enddo
+
  ! define Theta (i.e. Eve cannot interact with A) 
  !this defines the fine-grained constraints
  !     Tr[Theta_j .o. id_b] = theta_j 
@@ -196,10 +208,6 @@ program main
 
  ! measurments outcomes
  !  1) Alice POVM 
-    axa = cmplx(0.,0.)
-    do ii = 1, npovma
-        axa(ii,:,:) = Outer_product(signal(ii,:), conjg(signal(ii,:)))
-    enddo
     POVM_A = axa/2
     ! check if it is a POVM
     do kk=1,da
@@ -216,10 +224,6 @@ program main
     enddo
 
  !    POVM Bob 
-    bxb = cmplx(0.,0.)
-    do ii = 1, npovma
-        bxb(ii,:,:) = Outer_product(signal(ii,:), conjg(signal(ii,:)))
-    enddo
     POVM_B = bxb/2
     ! check if they sum to identity
     do kk=1,db
@@ -410,7 +414,6 @@ program main
 !---------------------------------------------------------------------
 !   PART 2): algorithm
 !---------------------------------------------------------------------
-
  ! gnuplot output file for graphics
     ps_file = "QKD.ps"
     open(unit=10, file=ps_file)
@@ -477,7 +480,7 @@ program main
         do jj = 1, size(Omega_j, 1)
             rho_0 = rho_0 + mat_trace(matmul(Omega_j(jj,:,:),rho_ab))*Omega_j(jj,:,:)
         enddo
-        ! rho_0 = rho_0 / mat_trace(rho_0) ! renormalization
+        rho_0 = rho_0 / mat_trace(rho_0) ! renormalization
         rho_0 = rho_ab
         ! check if rho_0 is physical
         sz = size(rho_0, 1)
@@ -491,14 +494,15 @@ program main
         ! call compute_primal(rho_0, f_rho, grad_f, id_1_4, id_4, id_4, key_map_test, Omega_j, Maxit, finesse, epsilon)
         call compute_primal(rho_0, f_rho, grad_f, Kraus, sifting, isometry, key_map, Omega_j, Maxit, finesse, epsilon)
 
- ! 8* STEP 2
+ ! 8* plotting results
         sp = f_rho - hp
         if(sp<1E-10)sp=0.
-        write(10,'(es20.10," ",es20.10," ",es20.10," ",es20.10)')uu, sp, th, f_rho
+        write(10,'(es20.10," ",es20.10," ",es20.10," ",es20.10," ",es20.10)')uu, th, sp, f_rho, hp
         deallocate(rho_0, grad_f, stat=ios)
         call checkpoint(ios==0, text="rho_0 deallocation failed")
     enddo
     write(10,'("EOD")')
+    write(10,'(A)')"# qber, theoric, step 1, f_rho, binary entropy"
     write(10,'(a)')"set terminal wxt 0 size 3000,1600"        
     ! write(10,'(a)')"set size 1,1"        
     write(10,'("set xlabel ''depolarization probability''")')
@@ -506,8 +510,8 @@ program main
     write(10,'("set title ''reliable lower bound for BB84 protocol''")')
     write(10,'("set grid")')
     write(10,'("set key outside")')    
-    write(10,'("#set xr [:]")')    
-    write(10,'(A)')"p $data u 1:2 w lp t 'step 1', $data u 1:3 w lp t 'theoric', $data u 1:4 w lp t 'f_{\rho}'"
+    write(10,'("set yr [0:1]")')    
+    write(10,'(A)')"p $data u 1:2 w lp t 'theoric', $data u 1:3 w lp t 'step 1', $data u 1:4 w lp t 'f_{\rho}'"
     close(10)!close file
  !   END PROCEDURE
 
