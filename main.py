@@ -268,15 +268,16 @@ def relative_entropy(rho, sigma):
     #                 print(avlr[ii], avls[ii])
     #         else:
     #             print("Q=0 notimply P=0")
-    
-    ios=0
-    for ii in range(np.shape(sigma)[0]):
-        for jj in range(np.shape(sigma)[1]):
-            if(abs(rho[ii,jj])>=1e-10):
-                print(ii,jj,rho[ii,jj])
-                ios=ios+1
-    print(ios)
-    exit()
+
+
+    # ios=0
+    # for ii in range(np.shape(sigma)[0]):
+    #     for jj in range(np.shape(sigma)[1]):
+    #         if(abs(sigma[ii,jj])>=1e-10):
+    #             print(ii,jj,sigma[ii,jj])
+    #             ios=ios+1
+    # print(ios)
+    # exit()
 
     # tr[ rho @ logm(rho)]
     res = - quantum_entropy(rho)/np.log(2)

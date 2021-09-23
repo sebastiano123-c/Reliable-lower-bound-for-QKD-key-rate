@@ -193,6 +193,7 @@ program main
 !---------------------------------------------------------------------
 !   PART 1): operator definitions
 !---------------------------------------------------------------------
+
  ! measurments outcomes
  !  1) Alice POVM 
     axa = cmplx(0.,0.)
@@ -409,6 +410,7 @@ program main
 !---------------------------------------------------------------------
 !   PART 2): algorithm
 !---------------------------------------------------------------------
+
  ! gnuplot output file for graphics
     ps_file = "QKD.ps"
     open(unit=10, file=ps_file)
@@ -475,8 +477,8 @@ program main
         do jj = 1, size(Omega_j, 1)
             rho_0 = rho_0 + mat_trace(matmul(Omega_j(jj,:,:),rho_ab))*Omega_j(jj,:,:)
         enddo
-        rho_0 = rho_0 / mat_trace(rho_0) ! renormalization
-        ! rho_0 = rho_ab
+        ! rho_0 = rho_0 / mat_trace(rho_0) ! renormalization
+        rho_0 = rho_ab
         ! check if rho_0 is physical
         sz = size(rho_0, 1)
         call checkpoint(real(mat_trace(rho_0))-1 <= 1e-8, text="Tr(rho_0)/=1",var=mat_trace(rho_0))
@@ -491,7 +493,7 @@ program main
 
  ! 8* STEP 2
         sp = f_rho - hp
-        if(trn<1E-10)trn=0.
+        if(sp<1E-10)sp=0.
         write(10,'(es20.10," ",es20.10," ",es20.10," ",es20.10)')uu, sp, th, f_rho
         deallocate(rho_0, grad_f, stat=ios)
         call checkpoint(ios==0, text="rho_0 deallocation failed")

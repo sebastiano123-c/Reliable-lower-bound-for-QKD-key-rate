@@ -11,6 +11,177 @@ module matrices
     endinterface
 
     contains
+    function identity(N)
+    !identity(
+    !            N(int)='number of elements on the diagonal'
+    !          )
+    !returns a Identity NxN matrix
+        implicit none
+            integer*8, intent(in)    :: N
+            integer*8                    :: ii
+            double complex            :: identity(N,N)
+            identity=dcmplx(0.d0,0.d0)
+            do ii=1,N
+                identity(ii,ii)=dcmplx(1.d0,0.d0)
+            enddo
+        return
+    endfunction identity
+
+    function sigma(N)
+    !sigma(
+    !            N(char)='X,Y or Z index of pauli 2x2 matrix'
+    !          )
+    !returns a sigma_n 2x2 matrix    
+        implicit none
+        character(*), intent(in)    :: N
+        double complex                :: sigma_x(2,2), sigma_y(2,2), sigma_z(2,2), sigma(2,2)
+        sigma_x(1,:) = [dcmplx(0.d0,0.d0),dcmplx(1.d0,0.d0)]
+        sigma_x(2,:) = [dcmplx(1.d0,0.d0),dcmplx(0.d0,0.d0)]
+        sigma_y(1,:) = [dcmplx(0.d0,0.d0),dcmplx(0.d0,-1.d0)]            
+        sigma_y(2,:) = [dcmplx(0.d0,1.d0),dcmplx(0.d0,0.d0)]
+        sigma_z(1,:) = [dcmplx(1.d0,0.d0),dcmplx(0.d0,0.d0)]
+        sigma_z(2,:) = [dcmplx(0.d0,0.d0),dcmplx(-1.d0,0.d0)]
+        select case(N)
+            case("x")
+                sigma = sigma_x
+            case("y")
+                sigma = sigma_y
+            case("z")
+                sigma = sigma_z
+            case default
+                write(*,'("ERROR uncorrect input N ",A," must be X,Y, or Z")')N
+                stop
+        endselect
+        return
+    endfunction
+
+    function is_hermitian(m,n)
+    ! is_hermitian(
+    !                mat(double complex) = 'input matrix'
+    !                dump(int,optional) = '=1 print, else NOT'
+    !                tol(real,optional) = ''
+    !              )
+    !return true if matrix is hermitian or false if not.
+        implicit none
+        integer, intent(in) :: n
+        complex(8), intent(in) :: m(n,n)
+        logical :: is_hermitian
+        integer(8) ii,jj
+    
+        is_hermitian=.True.
+        !is_hermitian = all(abs(mt-m) .le. 1e-8)
+        do ii=1,n
+            do jj=1,n
+                if(abs(m(ii,jj)-conjg(m(jj,ii)))>1e-8)then
+
+                    is_hermitian=.False.
+                    
+                    exit
+                endif
+            enddo
+        enddo
+    endfunction is_hermitian
+
+    function is_positive(m,n,tol) result(CC)
+    ! is_positive(
+    !                mat(double complex) = 'input matrix'
+    !                dump(int,optional) = '=1 print, else NOT'
+    !                tol(real,optional) = ''
+    !              )
+    !return true if matrix is hermitian or false if not.
+        implicit none
+        integer, intent(in)         :: n
+        real, intent(in), optional:: tol
+        complex(8), intent(in)  :: m(n,n)
+        complex(8) :: mp(n,n)
+        complex(8) :: egv(n,n)
+        real(8)    :: egl(n)
+        real                    tolerance
+        integer                 :: ii
+        logical                 :: CC
+
+        ! Duplicate
+        mp = m
+        if(present(tol).eqv..true.)then;tolerance=tol;else;tolerance=1e-8;endif
+        call eigensolver(mp,egl,egv,n)
+        CC = .true.
+        do ii = 1, n
+            if (egl(ii) < - tolerance)then
+                CC = .false.
+                write(*,'(A,i0,A,f10.5)')"is_positive:: ",ii," eigenvalue negative ",egl(ii)
+                RETURN
+            endif
+        enddo
+        return
+    endfunction is_positive
+
+    function mat_trace_complex8(mat)
+    !mat_trace_complex8(
+    !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
+    !              )
+    !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
+        implicit none
+        !
+        double complex, intent(in)    :: mat(:,:)
+            double complex                :: mat_trace_complex8
+            integer*4                    :: ii
+        !
+        mat_trace_complex8=cmplx(0.0,0.0)
+        do ii=1,size(mat,1)
+            mat_trace_complex8=mat_trace_complex8+mat(ii,ii)
+        enddo
+        !
+        return
+    endfunction mat_trace_complex8
+
+    function mat_trace_real8(mat)
+    !mat_trace_real8(
+    !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
+    !              )
+    !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
+            implicit none
+            !
+            real(8), intent(in)    :: mat(:,:)
+            real(8)                :: mat_trace_real8
+            integer*4              :: ii
+            !
+            mat_trace_real8=0_8
+            do ii=1,size(mat,1)
+                mat_trace_real8=mat_trace_real8+mat(ii,ii)
+            enddo
+            return
+    endfunction mat_trace_real8
+    
+    function cnorm(psi, dx)
+    !cnorm(
+    !             psi(double complex) = 'array 1 dimensionale',
+    !             dx(integer,opt) = 'larghezza step, default = 1'
+    !           )
+    ! return real norm for a complex array
+        implicit none
+        !
+        double complex,  INTENT(INOUT)            :: psi(:)
+        real*8, INTENT(IN),    optional            :: dx
+        real*8                                    :: cnorm, step=1.d0
+        integer*4                                :: ii
+        !
+        if(present(dx))step=dx
+        !
+        cnorm=0.d0
+        do ii=1,size(psi)
+            cnorm=cnorm+(real(psi(ii))**(2)+aimag(psi(ii))**(2))*step
+        enddo
+        cnorm=sqrt(cnorm)
+        !
+        return
+    endfunction cnorm
+    
+    real function infinity()
+        implicit none
+        real :: varx
+        varx = huge(1.)
+        infinity = varx + varx
+    end function infinity
 
     real(8) function DET_real(aa)
         real(8) aa(:,:)
@@ -134,8 +305,8 @@ module matrices
         !
         INTEGER, INTENT(IN)         :: N
         complex(8), INTENT(IN)      :: mat(N,N)
-        real(8), INTENT(INOUT), ALLOCATABLE      :: eigval(:)
-        complex(8), INTENT(INOUT), ALLOCATABLE   :: eigvec(:,:)
+        real(8), INTENT(INOUT)      :: eigval(N)
+        complex(8), INTENT(INOUT)   :: eigvec(N,N)
         INTEGER                     :: LDA
         INTEGER                     LWMAX
         INTEGER                     :: INFO, LWORK
@@ -151,7 +322,6 @@ module matrices
         allocate(RWORK( 3*N-2 ))
         allocate(WORK( LWMAX ))
 
-        allocate(eigval(n), eigvec(n,n))
         eigvec = mat
         LDA = N
         LWORK = -1
@@ -491,39 +661,23 @@ module matrices
             integer,INTENT(IN)     :: n
             complex(8),INTENT(IN)  :: matrix(n,n)
             Integer                :: info, lwork, nb, ii
-            complex(8),Allocatable :: a(:,:), w(:), work(:), diagm(:,:),&
-            & vrinv(:,:), ipiv(:), vl(:,:),vr(:,:)
-            Real(8),Allocatable    :: rwork(:)
+            parameter              (nb=64)
+            complex(8),ALLOCATABLE :: work(:)
+            complex(8)             :: a(n,n), diagm(n,n),&
+            & vrinv(n,n), ipiv(n), vr(n,n)
+            Real(8)                :: w(n)
     
-            Allocate (a(n,n), w(n), rwork(2*n))
-            Allocate (vl(n,n), vr(n,n))
-    
-            ! Read in the matrix A
-            vr = matrix
-            ! Make sure that there is enough workspace for block size nb.
-            nb = 64
-            lwork = (nb+1)*n!, nint(real(wdum(1))))
-            Allocate (work(lwork))
-            call zheev('v','u',n,vr,n,w,WORK,LWORK,rwork,INFO)
-    
-            !Check for convergence.
-            call checkpoint(INFO==0,text="logMZ, ZHEEV::&
-            &(i<0): the i-th argument had an illegal value (program is terminated);\n&
-            &(i=1 to n): the QR algorithm failed to compute the i eigenvalue;\n&
-            &(i=n+1): The eigenvalues could not be reordered;\n&
-            &(i=n+2): After reordering, roundoff changed values. [n,i]:",&
-            &vec = [n, info]&
-            &)
-    
-            allocate(diagm(n,n))
+            ! find eigenvalues and eigenvectors
+            call eigensolver(matrix, w, vr, n)
+
+            ! diagonals
             diagm = cmplx(0.,0.)
             do ii = 1,n
                 if(abs(w(ii)) > 1e-10 ) then
-                    diagm(ii, ii) = zlog(W(ii))
+                    diagm(ii, ii) = log(w(ii))
                 endif
             enddo
     
-            ALLOCATE(vrinv(n,n), ipiv(n))
             vrinv = VR
     
             call zgetrf( n, n, VRinv, n, ipiv, info )
@@ -533,7 +687,9 @@ module matrices
             &(i > 0):  if INFO = i, the algorithm failed to converge; i&
             &off-diagonal elements of an intermediate tridiagonal&
             &form did not converge to zero.',var=info)
-    
+
+            lwork=(nb+1)*n
+            allocate(work(lwork))
             call zgetri( n, VRinv, n, ipiv, WORK, LWORK, INFO )
             !Check for convergence.
             call checkpoint(&
@@ -542,8 +698,8 @@ module matrices
             &off-diagonal elements of an intermediate tridiagonal&
             &form did not converge to zero.',var=info)
     
-            a = matmul(matmul(VR,diagm),VRinv) 
-            deallocate(diagm, vrinv, w, work, rwork, ipiv, vl, vr)
+            a = matmul(matmul(VR,diagm),VRinv)
+            DEALLOCATE(work)
         endfunction logMZ
 
     subroutine complex_to_realm(n, cm, rm)
@@ -675,177 +831,4 @@ module matrices
         DEALLOCATE(U)
         return
     endsubroutine extend_basism
-
-    function identity(N)
-    !identity(
-    !            N(int)='number of elements on the diagonal'
-    !          )
-    !returns a Identity NxN matrix
-        implicit none
-            integer*8, intent(in)    :: N
-            integer*8                    :: ii
-            double complex            :: identity(N,N)
-            identity=dcmplx(0.d0,0.d0)
-            do ii=1,N
-                identity(ii,ii)=dcmplx(1.d0,0.d0)
-            enddo
-        return
-    endfunction identity
-
-    function sigma(N)
-    !sigma(
-    !            N(char)='X,Y or Z index of pauli 2x2 matrix'
-    !          )
-    !returns a sigma_n 2x2 matrix    
-        implicit none
-        character(*), intent(in)    :: N
-        double complex                :: sigma_x(2,2), sigma_y(2,2), sigma_z(2,2), sigma(2,2)
-        sigma_x(1,:) = [dcmplx(0.d0,0.d0),dcmplx(1.d0,0.d0)]
-        sigma_x(2,:) = [dcmplx(1.d0,0.d0),dcmplx(0.d0,0.d0)]
-        sigma_y(1,:) = [dcmplx(0.d0,0.d0),dcmplx(0.d0,-1.d0)]            
-        sigma_y(2,:) = [dcmplx(0.d0,1.d0),dcmplx(0.d0,0.d0)]
-        sigma_z(1,:) = [dcmplx(1.d0,0.d0),dcmplx(0.d0,0.d0)]
-        sigma_z(2,:) = [dcmplx(0.d0,0.d0),dcmplx(-1.d0,0.d0)]
-        select case(N)
-            case("x")
-                sigma = sigma_x
-            case("y")
-                sigma = sigma_y
-            case("z")
-                sigma = sigma_z
-            case default
-                write(*,'("ERROR uncorrect input N ",A," must be X,Y, or Z")')N
-                stop
-        endselect
-        return
-    endfunction
-
-    function is_hermitian(m,n)
-    ! is_hermitian(
-    !                mat(double complex) = 'input matrix'
-    !                dump(int,optional) = '=1 print, else NOT'
-    !                tol(real,optional) = ''
-    !              )
-    !return true if matrix is hermitian or false if not.
-        implicit none
-        integer, intent(in) :: n
-        complex(8), intent(in) :: m(n,n)
-        logical :: is_hermitian
-        integer(8) ii,jj
-    
-        is_hermitian=.True.
-        !is_hermitian = all(abs(mt-m) .le. 1e-8)
-        do ii=1,n
-            do jj=1,n
-                if(abs(m(ii,jj)-conjg(m(jj,ii)))>1e-8)then
-
-                    is_hermitian=.False.
-                   
-                    exit
-                endif
-            enddo
-        enddo
-    endfunction is_hermitian
-
-    function is_positive(m,n,tol) result(CC)
-    ! is_positive(
-    !                mat(double complex) = 'input matrix'
-    !                dump(int,optional) = '=1 print, else NOT'
-    !                tol(real,optional) = ''
-    !              )
-    !return true if matrix is hermitian or false if not.
-        implicit none
-        integer, intent(in)         :: n
-        real, intent(in), optional:: tol
-        complex(8), intent(in)  :: m(n,n)
-        complex(8), ALLOCATABLE :: mp(:,:)
-        complex(8), ALLOCATABLE :: egv(:,:)
-        real(8), ALLOCATABLE    :: egl(:)
-        real                    tolerance
-        integer                 :: ii
-        logical                 :: CC
-
-        ! Duplicate
-        mp = m
-        if(present(tol).eqv..true.)then;tolerance=tol;else;tolerance=1e-8;endif
-        call eigensolver(mp,egl,egv,n)
-        CC = .true.
-        do ii = 1, n
-            if (egl(ii) < - tolerance)then
-                CC = .false.
-                write(*,'(A,i0,A,f10.5)')"is_positive:: ",ii," eigenvalue negative ",egl(ii)
-                RETURN
-            endif
-        enddo
-        DEALLOCATE(mp, egl,egv)
-        return
-    endfunction is_positive
-
-    function mat_trace_complex8(mat)
-    !mat_trace_complex8(
-    !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
-    !              )
-    !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
-        implicit none
-        !
-        double complex, intent(in)    :: mat(:,:)
-         double complex                :: mat_trace_complex8
-         integer*4                    :: ii
-        !
-        mat_trace_complex8=cmplx(0.0,0.0)
-        do ii=1,size(mat,1)
-            mat_trace_complex8=mat_trace_complex8+mat(ii,ii)
-        enddo
-        !
-        return
-    endfunction mat_trace_complex8
-
-    function mat_trace_real8(mat)
-    !mat_trace_real8(
-    !            mat='array 1-dimensionale che contiene la lista degli elementi della matrice',
-    !              )
-    !la traccia è definita come la somma di tutti gli elementi di matrice presenti sulla diagonale della matrice mat
-            implicit none
-            !
-            real(8), intent(in)    :: mat(:,:)
-            real(8)                :: mat_trace_real8
-            integer*4              :: ii
-            !
-            mat_trace_real8=0_8
-            do ii=1,size(mat,1)
-                mat_trace_real8=mat_trace_real8+mat(ii,ii)
-            enddo
-            return
-    endfunction mat_trace_real8
-    
-    function cnorm(psi, dx)
-    !cnorm(
-    !             psi(double complex) = 'array 1 dimensionale',
-    !             dx(integer,opt) = 'larghezza step, default = 1'
-    !           )
-    ! return real norm for a complex array
-        implicit none
-        !
-        double complex,  INTENT(INOUT)            :: psi(:)
-        real*8, INTENT(IN),    optional            :: dx
-        real*8                                    :: cnorm, step=1.d0
-        integer*4                                :: ii
-        !
-        if(present(dx))step=dx
-        !
-        cnorm=0.d0
-        do ii=1,size(psi)
-           cnorm=cnorm+(real(psi(ii))**(2)+aimag(psi(ii))**(2))*step
-        enddo
-        cnorm=sqrt(cnorm)
-        !
-        return
-    endfunction cnorm
-
-    real function infinity()
-        implicit none
-        real :: varx
-        varx = huge(1.)
-        infinity = varx + varx
-    end function infinity
 endmodule matrices

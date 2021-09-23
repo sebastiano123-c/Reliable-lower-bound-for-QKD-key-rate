@@ -77,7 +77,7 @@ module QKD
         complex(8),INTENT(INOUT)    :: ro(:,:)
         real(4),INTENT(INOUT)       :: pp
         complex(8),ALLOCATABLE      :: rho_tilde(:,:)
-        integer                     :: siz, jj, ios
+        integer                     :: jj, ios
 
         ! apply enlarging
         allocate(rho_tilde( size(kr,2), size(kr,2) ))
@@ -85,7 +85,6 @@ module QKD
         do jj = 1, size(kr,1)
             rho_tilde=rho_tilde+matmul(matmul(kr(jj,:,:),ri),conjg(transpose(kr(jj,:,:))))
         enddo
-        siz = size(rho_tilde,1)
         
         ! apply the sifting phase
         pp = real(mat_trace( matmul( rho_tilde, sf) ), kind=4)
@@ -95,6 +94,7 @@ module QKD
         ro = matmul(matmul( is, rho_tilde ), conjg(transpose(is)))
         DEALLOCATE(rho_tilde, stat=ios)
         call checkpoint(ios == 0, text = "CP_map:: deallocation failed. ")
+
         return
     endsubroutine CP_map
 
@@ -137,39 +137,39 @@ module QKD
         complex(8), intent(in)      :: rho(n,n)    ! input rho 
         real(8)                     :: VonNeumannEntropy
 
-        ! fudge = 1e-13
-        ! new_rho = (1 - fudge) * rho + fudge * identity(int8(n))
-        ! VonNeumannEntropy=-1 *real(mat_trace(matmul(rho,logm(new_rho,n))))
-        print*, "vn"
-        VonNeumannEntropy=-1 *real(mat_trace(matmul(rho,logm(rho,n,1e-10))))
-        print*,"vn2"
+        VonNeumannEntropy=-1 *real(mat_trace(matmul(rho,logmz(rho,n))))
     endfunction VonNeumannEntropy
 
-    function RelativeEntropy(rho, sigmap, n)
+    function RelativeEntropy(rho1, rho2, n)
+    ! Computes the quantum relative entropy D(rho1 || rho2)
+    ! ---------------------------------------------------------------
+    ! args:
+    !   n = dimension of rho1, rho2
+    !   rho1
+    !   rho2
         implicit none
         integer, INTENT(IN)         :: n
-        complex(8), intent(in)      :: rho(n,n), sigmap(n,n)    ! input rho
-        real(8)                     :: RelativeEntropy
-        integer ios,ii,jj,kk
+        complex(8), intent(in)      :: rho1(n,n), rho2(n,n)    ! input rho
+        complex(8)                  :: new_rho2(n,n)
+        real(8)                     :: RelativeEntropy, fudge
+        ! integer ios,ii,jj
 
-        ios=0
-        do ii =1,n
-            do jj=1,n
-                if(abs(rho(ii,jj))>=1e-10)then
-                    print*,ii-1,jj-1,rho(ii,jj)
-                    ios=ios+1
-                endif
-            enddo
-        enddo
-        print*,ios
-        stop
 
-        ! rho tr[rho] - sigma tr[sigma] - (rho-sigma)tr[sigma]
-        RelativeEntropy = - VonNeumannEntropy(rho,n)
-        print*, "ge", RelativeEntropy
-        ! print*,"su", RelativeEntropy
-        RelativeEntropy = ( RelativeEntropy - real(mat_trace(matmul(rho,logm(sigmap,n,1e-10))),kind=8))/log(2.)
-        print*, "su", RelativeEntropy
+    
+        fudge = 1e-10
+        if(size(rho1) /= size(rho2)) stop "Need two matrices to be the same shape"
+    
+        new_rho2 = (1-fudge) * rho2 + fudge * identity(int8(n))
+    
+        RelativeEntropy = -1*VonNeumannEntropy(rho1,n)
+        RelativeEntropy =real( RelativeEntropy - mat_trace(matmul(rho1, logmz(new_rho2,n)))) / log(2.)
+    
+        ! ! rho tr[rho] - sigma tr[sigma] - (rho-sigma)tr[sigma]
+        ! RelativeEntropy = - VonNeumannEntropy(rho,n)
+        ! print*, "ge", RelativeEntropy
+        ! ! print*,"su", RelativeEntropy
+        ! RelativeEntropy = ( RelativeEntropy - real(mat_trace(matmul(rho,logmz(sigmap,n,1e-10))),kind=8))/log(2.)
+        ! print*, "su", RelativeEntropy
     endfunction RelativeEntropy
 
     function binary_entropy(p) result(be)
@@ -409,7 +409,6 @@ module QKD
 
         ! f_rho
             fr = RelativeEntropy(rho_4, rho_5, siz)
-            write(*,*) " f(rho) =", fr
 
         ! define gradient [grad_f(rho)]^T = G**+(log[G(rho)]) - G**+(log[Z(G(rho))])
             gf = cmplx(0.,0.)
@@ -417,9 +416,8 @@ module QKD
             allocate(logrho(siz,siz))
             siz = size(rho_i, 1) ! 4
             allocate(rho_temp(siz,siz))
-            print*,"rho4"
             siz = size(rho_4, 1)
-            logrho = logm(rho_4,siz,1e-8)
+            logrho = logmz(rho_4,siz)
             ! inverse function
             call CP_map_inverse(logrho, kr, sf, is, rho_temp)
             gf = rho_temp
@@ -428,10 +426,8 @@ module QKD
             allocate(logrho(siz,siz))
             siz = size(rho_i, 1) ! 4
             allocate(rho_temp(siz,siz))
-            siz = size(rho_4, 1)
-            print*,"rho5"
-            logrho = logm(rho_5,siz,1e-8)
-            print*,"45fin"
+            siz = size(rho_5, 1)
+            logrho = logmz(rho_5,siz)
             ! inverse function
             call CP_map_inverse(logrho, kr, sf, is, rho_temp)
             gf = transpose(gf - rho_temp)/log(2.)
@@ -445,9 +441,10 @@ module QKD
             enddo
             allocate(F0_real(2*siz,2*siz))
             call complex_to_realm(siz,-rho_i,F0_real)
-            ! call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
+            call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
             allocate(x_i(m))
-            ! call SDPA_read_solution(m,x_i)
+            call SDPA_read_solution(m,x_i)
+            write(*,*) " f(rho) =", fr
 
             ! find delta_rho
             siz = size(rho_i,1)
