@@ -154,6 +154,8 @@ program main
     complex(8)                                  :: Gamma_i(ngamma,dtot,dtot)                ! measurments
     complex(8), allocatable                     :: Gamma_tilde(:,:,:)                       ! gram-schimdt decomposition
     complex(8), allocatable                     :: Omega_j(:,:,:), Gamma_tilde_k(:,:,:)
+ ! constraints vector
+    real(8)                                     :: p_i(ngamma)
  ! quantum channel
     complex(8)                                  :: depo(db**2,dtot,dtot) ! depolarization
  ! constants
@@ -168,13 +170,14 @@ program main
     real                                        :: start, finish, hp, th, trn
     INTEGER                                     :: ios, ii, jj, kk, ll, mm, sz
     CHARACTER(200)                              :: ps_file
+
     ! start computing
     call cpu_time(start)
 
  ! constants
     id_a = identity(int8(da))
     id_b = identity(int8(db))
-    id_b = identity(int8(dtot))
+    id_t = identity(int8(dtot))
     id_1_4(1,:,:)=id_4
 
  ! encoding qubit basis
@@ -209,6 +212,9 @@ program main
  ! measurments outcomes
  !  1) Alice POVM 
     POVM_A = axa/2
+    do ii = 1, npovma
+        POVM_A = 2*P_A(ii)*axa
+    enddo
     ! check if it is a POVM
     do kk=1,da
         do jj=1,da
@@ -224,7 +230,9 @@ program main
     enddo
 
  !    POVM Bob 
-    POVM_B = bxb/2
+    do ii = 1, npovmb
+        POVM_B = 2*P_B(ii)*axa
+    enddo
     ! check if they sum to identity
     do kk=1,db
         do jj=1,db
@@ -431,10 +439,10 @@ program main
     rho_AB = rho_AB / real(mat_trace(rho_AB))
     ! check if the density operator is physical
     sz = size(rho_AB,1)
-    call checkpoint(real(mat_trace(rho_AB))-1 <= 1e-8, text="Tr(rho_AB)/=1",var=mat_trace(rho_AB))
-    call checkpoint(is_hermitian(rho_AB,sz), text="rho_AB is not hermitian")
-    call checkpoint(is_positive(rho_AB,sz), text="rho_AB is not positive")
-    print*, "rho_ab purity", real(mat_trace(matmul( rho_ab, rho_ab )))
+    call checkpoint(real(mat_trace(rho_AB))-1<=1e-8,text="Tr(rho_AB)/=1",var=mat_trace(rho_AB))
+    call checkpoint(is_hermitian(rho_AB,sz),text="rho_AB is not hermitian")
+    call checkpoint(is_positive(rho_AB,sz),text="rho_AB is not positive")
+    print*,"rho_ab purity",real(mat_trace(matmul(rho_ab,rho_ab)))
 
  ! 2* starting point of the algorithm
     do ii = 0, N_steps
@@ -446,7 +454,6 @@ program main
         hp = real(binary_entropy(uu), 4)
         ! theorical value
         th = 1. - 2.* hp
-        if (th <= 1e-10) th = 0.
 
  ! 3* Depolarization channel:
         depo(1,:,:) = sqrt(1-3./4.*uu)*kronecker_product( id_a, pauli(1,:,:) )
@@ -471,7 +478,11 @@ program main
         print*, "purity after quantum channel", real(mat_trace(matmul(rho_ab,rho_ab)))
 
  ! 6* Calculate the constraints
-        ! create rho_0
+        do jj = 1, ngamma
+            p_i(jj) = real(mat_trace(matmul(Gamma_i(jj,:,:),rho_ab)))
+        enddo
+
+! create rho_0
         allocate(rho_0(size(rho_ab, 1), size(rho_ab, 2)))
         rho_0 = cmplx(0., 0.)
         do jj = 1, size(Gamma_tilde_k, 1)
@@ -490,29 +501,31 @@ program main
 
  ! ALGORITHM 
  ! 7* STEP 1
-        ALLOCATE(grad_f(size(rho_0, 1), size(rho_0,2)))
+        ALLOCATE(grad_f(size(rho_0,1), size(rho_0,2)))
+        f_rho = 0.
         ! call compute_primal(rho_0, f_rho, grad_f, id_1_4, id_4, id_4, key_map_test, Omega_j, Maxit, finesse, epsilon)
-        call compute_primal(rho_0, f_rho, grad_f, Kraus, sifting, isometry, key_map, Omega_j, Maxit, finesse, epsilon)
+        call compute_primal(rho_0,f_rho,grad_f,Kraus,sifting,isometry,key_map,Omega_j,Gamma_i,p_i,Maxit,finesse,epsilon)
 
  ! 8* plotting results
         sp = f_rho - hp
-        if(sp<1E-10)sp=0.
         write(10,'(es20.10," ",es20.10," ",es20.10," ",es20.10," ",es20.10)')uu, th, sp, f_rho, hp
         deallocate(rho_0, grad_f, stat=ios)
         call checkpoint(ios==0, text="rho_0 deallocation failed")
     enddo
     write(10,'("EOD")')
-    write(10,'(A)')"# qber, theoric, step 1, f_rho, binary entropy"
+    write(10,'("# column order:")')
+    write(10,'(A)')"# $1: QBER, $2: theoric, $3: step 1,  $4: f_rho, $5: binary entropy"
     write(10,'(a)')"set terminal wxt 0 size 3000,1600"        
     ! write(10,'(a)')"set size 1,1"        
-    write(10,'("set xlabel ''depolarization probability''")')
+    write(10,'("set xlabel ''QBER''")')
     write(10,'("set ylabel ''secret key rate''")')
     write(10,'("set title ''reliable lower bound for BB84 protocol''")')
     write(10,'("set grid")')
     write(10,'("set key outside")')    
-    write(10,'("set yr [0:1]")')    
+    write(10,'("#set yr [0:1]")')    
     write(10,'(A)')"p $data u 1:2 w lp t 'theoric', $data u 1:3 w lp t 'step 1', $data u 1:4 w lp t 'f_{\rho}'"
-    close(10)!close file
+    !close file
+    close(10)
  !   END PROCEDURE
 
 ! deallocation
@@ -523,5 +536,4 @@ program main
     call cpu_time(finish)
     WRITE(*, '(f10.3, A)') finish-start, " s"
     call execute_command_line(("gnuplot -p "//trim(ps_file)))
-
 endprogram main

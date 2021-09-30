@@ -55,7 +55,7 @@ module matrices
         return
     endfunction
 
-    function is_hermitian(m,n)
+    logical function is_hermitian(m,n)
     ! is_hermitian(
     !                mat(double complex) = 'input matrix'
     !                dump(int,optional) = '=1 print, else NOT'
@@ -63,9 +63,8 @@ module matrices
     !              )
     !return true if matrix is hermitian or false if not.
         implicit none
-        integer, intent(in) :: n
-        complex(8), intent(in) :: m(n,n)
-        logical :: is_hermitian
+        integer, intent(in)     :: n
+        complex(8), intent(in)  :: m(n,n)
         integer(8) ii,jj
     
         is_hermitian=.True.
@@ -73,16 +72,14 @@ module matrices
         do ii=1,n
             do jj=1,n
                 if(abs(m(ii,jj)-conjg(m(jj,ii)))>1e-8)then
-
-                    is_hermitian=.False.
-                    
-                    exit
+                    is_hermitian=.False.                    
+                    return
                 endif
             enddo
         enddo
     endfunction is_hermitian
 
-    function is_positive(m,n,tol) result(CC)
+    logical function is_positive(m,n,tol)
     ! is_positive(
     !                mat(double complex) = 'input matrix'
     !                dump(int,optional) = '=1 print, else NOT'
@@ -90,25 +87,21 @@ module matrices
     !              )
     !return true if matrix is hermitian or false if not.
         implicit none
-        integer, intent(in)         :: n
-        real, intent(in), optional:: tol
-        complex(8), intent(in)  :: m(n,n)
-        complex(8) :: mp(n,n)
-        complex(8) :: egv(n,n)
-        real(8)    :: egl(n)
-        real                    tolerance
-        integer                 :: ii
-        logical                 :: CC
+        integer,intent(in)       :: n
+        real,intent(in),optional :: tol
+        complex(8),intent(in)    :: m(n,n)
+        complex(8)               :: egv(n,n)
+        real(8)                  :: egl(n)
+        real                     tolerance
+        integer                  :: ii
 
-        ! Duplicate
-        mp = m
         if(present(tol).eqv..true.)then;tolerance=tol;else;tolerance=1e-8;endif
-        call eigensolver(mp,egl,egv,n)
-        CC = .true.
+        call eigensolver(m,egl,egv,n)
+        is_positive = .true.
         do ii = 1, n
             if (egl(ii) < - tolerance)then
-                CC = .false.
-                write(*,'(A,i0,A,f10.5)')"is_positive:: ",ii," eigenvalue negative ",egl(ii)
+                is_positive = .false.
+                write(*,'(A,i0,A,es20.10)')"is_positive:: eigenvalue ",ii," is negative ",egl(ii)
                 RETURN
             endif
         enddo
@@ -128,7 +121,11 @@ module matrices
         !
         mat_trace_complex8=cmplx(0.0,0.0)
         do ii=1,size(mat,1)
-            mat_trace_complex8=mat_trace_complex8+mat(ii,ii)
+            if(isnan(real(mat(ii,ii))).eqv..false.)then
+                mat_trace_complex8=mat_trace_complex8+mat(ii,ii)
+            else
+                print*,mat_trace_complex8, mat(ii,ii)
+            endif
         enddo
         !
         return
@@ -461,7 +458,7 @@ module matrices
         a = matrix
 
         ! Find the Schur factorization of A
-        Call zgees('V', 'N', select, n, a, lda, sdim, w, vs, ldvs, work, lwork, rwork, dummy, info)       
+        Call zgees('V', 'N', select, n, a, lda, sdim, w, vs, ldvs, work, lwork, rwork, dummy, info)
         !Check for convergence.
         call checkpoint(&
         &INFO==0,&
@@ -657,6 +654,8 @@ module matrices
         !           mat(complex(8)) = 'input matrix'
         !       )
         !returns the log of the matrix
+        USE IEEE_ARITHMETIC
+
             implicit none
             integer,INTENT(IN)     :: n
             complex(8),INTENT(IN)  :: matrix(n,n)
@@ -673,8 +672,10 @@ module matrices
             ! diagonals
             diagm = cmplx(0.,0.)
             do ii = 1,n
-                if(abs(w(ii)) > 1e-10 ) then
-                    diagm(ii, ii) = log(w(ii))
+                if(abs(w(ii)) >= 1e-10 ) then
+                    if( real(w(ii))+1./=real(w(ii)) )then ! is not nan
+                        diagm(ii, ii) = zlog( cmplx(real(w(ii),8),0.,8) )
+                    endif
                 endif
             enddo
     
@@ -697,8 +698,16 @@ module matrices
             &(i > 0):  if INFO = i, the algorithm failed to converge; i&
             &off-diagonal elements of an intermediate tridiagonal&
             &form did not converge to zero.',var=info)
-    
-            a = matmul(matmul(VR,diagm),VRinv)
+            
+            a = matmul(diagm,VRinv)
+            a = matmul(VR,a)
+
+            ! do ii = 1, n
+            !     do jj = 1, n
+            !         if( real(VRinv(ii,jj))+1..eq.real(VRinv(ii,jj)) ) print*, "isnannnn"
+            !     enddo
+            ! enddo
+
             DEALLOCATE(work)
         endfunction logMZ
 
@@ -720,6 +729,7 @@ module matrices
             rm(:n,n+1:) = - aimag(cm)
             rm(n+1:,:n) = aimag(cm)
             rm(n+1:,n+1:) = real(cm)
+            rm = rm/2.
             return
         endsubroutine complex_to_realm
 

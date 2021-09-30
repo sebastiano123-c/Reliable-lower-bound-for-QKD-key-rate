@@ -89,8 +89,9 @@ module QKD
         enddo
         
         ! apply the sifting phase
-        pp = real(mat_trace( matmul( rho_tilde, sf) ), kind=4)
-        rho_tilde = matmul( sf, matmul(rho_tilde, sf))/pp
+        rho_tilde = matmul( rho_tilde, sf)
+        pp = real(mat_trace( rho_tilde ), kind=4)
+        rho_tilde = matmul( sf, rho_tilde )/pp
 
         ! apply the is V
         ro = matmul(matmul( is, rho_tilde ), conjg(transpose(is)))
@@ -134,12 +135,22 @@ module QKD
     ! args
     !   n = # columns rho
     !   rho = density matrix
+        use ieee_arithmetic
         implicit none
         integer, INTENT(IN)         :: n
         complex(8), intent(in)      :: rho(n,n)    ! input rho 
-        real(8)                     :: VonNeumannEntropy
+        complex(8)                  :: new_rho(n,n)
+        real(8)                     :: VonNeumannEntropy, fudge
+        fudge = 1e-15
+    
+        new_rho = (1-fudge) * rho + fudge * identity(int8(n))
 
-        VonNeumannEntropy=-1 *real(mat_trace(matmul(rho,logmz(rho,n))))
+        new_rho = logmz(new_rho,n)
+
+        ! print*,"vv logmz",mat_trace(new_rho)
+        ! print*,"vv      ",mat_trace(matmul(rho,new_rho))
+        if (isnan(real(mat_trace(rho),4))) stop " logmz nan"
+        VonNeumannEntropy=-1 *real(mat_trace(matmul(rho,new_rho)))
     endfunction VonNeumannEntropy
 
     function RelativeEntropy(rho1, rho2, n)
@@ -154,17 +165,17 @@ module QKD
         complex(8), intent(in)      :: rho1(n,n), rho2(n,n)    ! input rho
         complex(8)                  :: new_rho2(n,n)
         real(8)                     :: RelativeEntropy, fudge
-        ! integer ios,ii,jj
-
-
-    
-        fudge = 1e-10
+        
+        fudge = 1e-16
         if(size(rho1) /= size(rho2)) stop "Need two matrices to be the same shape"
     
         new_rho2 = (1-fudge) * rho2 + fudge * identity(int8(n))
     
         RelativeEntropy = -1*VonNeumannEntropy(rho1,n)
-        RelativeEntropy = real( RelativeEntropy - mat_trace(matmul(rho1, logmz(new_rho2,n)))) / log(2.)
+        ! print*,"re2",RelativeEntropy
+        RelativeEntropy = real( RelativeEntropy - mat_trace(matmul(rho1, logmz(new_rho2,n)))) /log(2.)
+        ! print*,"re3",RelativeEntropy
+
     endfunction RelativeEntropy
 
     function binary_entropy(p) result(be)
@@ -183,6 +194,128 @@ module QKD
         endif
     endfunction binary_entropy
 
+
+    subroutine SDPA_write_problem1(m, j, n, c, F0, Fi, Gi, pi)
+    ! Writes the SDP problem given by
+    !   minimize  : sum_i( x_i*c_i )
+    !   subject to: sum_i( x_i*F_i - F0 ) >= 0
+    !               Tr[(sum_j x_j*F_j - F0)@Gi] = pi 
+    ! onto a text file sdp.dat and launches SDPA.exe in order to so-
+    ! lve it.
+    ! ---------------------------------------------------------------
+    ! Arguments:
+    !   m = number of c components
+    !   j = number of pi components
+    !   n = dimension of Fi
+    !   c = costant vector
+    !   F0 = constant matrix 
+    !   Fi = coefficient matrix 
+    !   Gi = set of constraints operators generating constraints
+    !   pi = set of constraints
+        implicit none
+
+        integer,intent(in)    :: m            ! number of x_i
+        integer,intent(in)    :: j            ! number of x_i
+        integer,intent(in)    :: n            ! dimension of F0
+        real(8),INTENT(IN)    :: c(m)         ! costant vector of c_i
+        real(8),INTENT(IN)    :: F0(n,n)      ! it is rho_0 from complex to real
+        real(8),INTENT(IN)    :: Fi(m,n,n)    
+        real(8),INTENT(IN)    :: Gi(j,n,n)    
+        real(8),INTENT(IN)    :: pi(j)    
+        INTEGER               ii, jj, kk
+        INTEGER,PARAMETER     :: uf=15      !file unit
+
+        ! open file
+        open(unit=uf, file="sdp.dat", action="write")
+
+        ! write titleand comment
+        write(uf,'(A)') '"sdp problem"'
+        write(uf,'(i0,A)') m," = mDIM"          ! m
+        write(uf,'(i0,A)') 1+j," = nBLOCK"  ! j-gamma constraints, 1 trace constr, 1 positivity constr, 1 hermiticity constr    
+        write(uf,'(A,i0,A)',advance="no") "(",n,","   ! positivity (-n because it is antisymmetric)
+        do ii = 1, j-1
+            write(uf,'("1,")',advance="no")            ! gamma_i
+        enddo
+        write(uf,'("1) = bLOCKsTRUCT")')               ! tr = 1
+
+        ! write C
+        write(uf,'("{")',advance="no")
+        do jj = 1, m
+            write(uf, '("",es20.10,"")' ,advance="no") c(jj)
+            if(jj<m)then
+                write(uf,'(",")',advance="no")
+            endif
+        enddo
+        write(uf,'("}")')
+
+        ! write F0
+        ! open
+        write(uf,'("{")')
+        ! positivty
+        write(uf,'(" {")',advance="no")
+        do jj = 1, n
+            write(uf,'(" {")',advance="no")
+            do kk = 1, n
+                write(uf, '(" {",es20.10,"}")',advance="no") F0(kk,jj)
+                if(kk<n)then
+                    write(uf,'(",")',advance="no")
+                endif
+            enddo
+            if(jj<n)then
+                write(uf,'(" },")')
+            else
+                write(uf,'(" }")',advance="no")
+            endif
+        enddo
+        write(uf,'(" }")')
+        ! tr[rho_i Gj]
+        do ii = 1, j!'(" {",f10.7,"}")'
+            write(uf,'(" ",es20.10,"")')(-real(pi(ii))+real(mat_trace(matmul(F0,Gi(ii,:,:)))))
+        enddo
+        ! tr = 1
+        write(uf,'(" ",es20.10,"")') (-1.+real(mat_trace(F0)))
+        ! close
+        write(uf,'("}")')
+
+        ! write Fi
+        do ii = 1, m
+            ! open
+            write(uf,'("{")')
+            ! Omega_i
+            write(uf,'(" {")',advance="no")
+            do jj = 1, n
+                write(uf,'(" {")',advance="no")
+                do kk = 1, n
+                    write(uf, '(" {",es20.10,"}")' ,advance="no") Fi(ii,kk,jj)
+                    if(kk<n)then
+                        write(uf,'(",")',advance="no")
+                    endif
+                enddo
+                if(jj<n)then
+                    write(uf,'(" },")')
+                else
+                    write(uf,'(" }")',advance="no")
+                endif
+            enddo
+            write(uf,'(" }")')
+            ! x_k Tr[Omega_k Gj]
+            do jj = 1, j
+                write(uf,'(" ",es20.10,"")') real(mat_trace(matmul(Fi(ii,:,:),Gi(jj,:,:))))
+            enddo
+            ! tr = 1
+            write(uf,'(" ",es20.10,"")') real(mat_trace(Fi(ii,:,:)))
+            ! close
+            write(uf,'("}")')
+        enddo
+
+        ! close sdp.out
+        close(uf)
+
+        ! execute command to perform SDPA solving
+        call execute_command_line("sdpa sdp.dat sdp.out param.sdpa", wait=.true.)
+        return
+    endsubroutine SDPA_write_problem1
+   
     subroutine SDPA_write_problem(m, n, c, F0, Fi)
     ! Writes the SDP problem given by
     !   minimize  : sum_i( x_i*c_i )
@@ -197,8 +330,6 @@ module QKD
     !   c = costant vector
     !   F0 = constant matrix 
     !   Fi = coefficient matrix 
-    !   Gi = set of constraints operators generating constraints
-    !   pi = set of constraints
         implicit none
 
         integer,intent(in) :: m            ! number of x_i
@@ -206,127 +337,281 @@ module QKD
         real(8),INTENT(IN) :: c(m)         ! costant vector of c_i
         real(8),INTENT(IN) :: F0(n,n)       
         real(8),INTENT(IN) :: Fi(m,n,n)    
-        ! real(8),INTENT(IN) :: Gi(j,n,n)    
-        ! real(8),INTENT(IN) :: pi(j)    
-        INTEGER            ii, jj, kk, sz
+        INTEGER            ii, jj, kk, sz, uf
+        parameter          (uf=15)
 
         ! open file
-        open(unit=15, file="sdp.dat", action="write")
+        open(unit=uf, file="sdp.dat", action="write")
 
         ! write titleand comment
-        write(15,'(A,A,A)') '"',"sdp problem",'"'
-        write(15,'(i0,A)') m," = mDIM"          ! m
-        ! write(15,'(i0,A)') j+2," = nBLOCK"       
-        write(15,'(i0,A)') 1," = nBLOCK"       
-        ! write(15,'(A,i0,A)',advance="no") "(",2*n,","
-        ! do jj = 1, j
-        !     write(15,'("1,")',advance="no")
-        ! enddo
-        ! write(15,'(A)',advance="no") "1) = bLOCKsTRUCT"   ! n
-        write(15,'(i0," = bLOCKsTRUCT")') n
+        write(uf,'(A,A,A)') '"',"sdp problem",'"'
+        write(uf,'(i0,A)') m," = mDIM"          
+        write(uf,'(i0,A)') 1," = nBLOCK"       
+        write(uf,'(i0," = bLOCKsTRUCT")') n
 
         ! write C
         sz = size(c)
-        write(15,*)''
-        write(15,'("{")',advance="no")
+        write(uf,'("{")',advance="no")
         do jj = 1, sz
-            write(15, '(f7.4)' ,advance="no") c(jj)
+            write(uf, '(f10.7)' ,advance="no") c(jj)
             if(jj<sz)then
-                write(15,'(",")',advance="no")
+                write(uf,'(",")',advance="no")
             endif
         enddo
-        write(15,'("}")')
+        write(uf,'("}")')
 
         ! write F0
         sz = size(F0,1)
         ! open
-        write(15,'(" {")',advance="no")
+        write(uf,'("{")',advance="no")
         ! positivity
         do jj = 1, sz
-            write(15,'(" {")',advance="no")
+            write(uf,'(" {")',advance="no")
             do kk = 1, sz
-                write(15, '(f7.4)' ,advance="no") F0(jj, kk)
+                write(uf,'(f10.7)',advance="no") F0(kk,jj)
                 if(kk<sz)then
-                    write(15,'(",")',advance="no")
+                    write(uf,'(",")',advance="no")
                 endif
             enddo
-            write(15,'(" }")',advance="no")
+            write(uf,'(" }")',advance="no")
             if(jj<sz)then
-                write(15,'(",")',advance="no")
+                write(uf,'(",")',advance="no")
             endif
         enddo
         ! close 
-        write(15,'("}")')
+        write(uf,'("}")')
 
         ! write Fi
         do ii = 1, m
             ! open
-            write(15,'("{")',advance="no")
+            write(uf,'("{")',advance="no")
             ! positivity
             do jj = 1, sz
-                write(15,'(" {")',advance="no")
+                write(uf,'(" {")',advance="no")
                 do kk = 1, sz
-                    write(15,'(es20.10)',advance="no") Fi(ii, jj, kk)
+                    write(uf,'(f10.7)',advance="no")Fi(ii,kk,jj)
                     if(kk<sz)then
-                        write(15,'(",")',advance="no")
+                        write(uf,'(",")',advance="no")
                     endif
                 enddo
-                write(15,'("}")',advance="no")
+                write(uf,'("}")',advance="no")
                 if(jj<sz)then
-                    write(15,'(",")',advance="no")
+                    write(uf,'(",")',advance="no")
                 endif
             enddo
             ! close
-            write(15,'("}")')
+            write(uf,'("}")')
         enddo
 
         ! close sdp.out
-        close(15)
+        close(uf)
         ! execute command to perform SDPA solving
-        call execute_command_line("sdpa sdp.dat sdp.out", wait=.true.)
+        call execute_command_line("sdpa sdp.dat sdp.out",wait=.true.)
         ! stop
         return
-    endsubroutine SDPA_write_problem
-   
-    subroutine SDPA_read_solution(m, arr)
-    ! Reads the SDPA solution written in the result file sdp.out
+    endsubroutine SDPA_write_problem 
+
+    subroutine solve_sdpa(m, j, n, c, F0, Fi, Gi, pi)
+    ! Writes the SDP problem given by
+    !   minimize  : sum_i( x_i*c_i )
+    !   subject to: sum_i( x_i*F_i - F0 ) >= 0
+    !               Tr[(sum_j x_j*F_j - F0)@Gi] = pi 
+    ! onto a text file sdp.dat and launches SDPA.exe in order to so-
+    ! lve it.
     ! ---------------------------------------------------------------
     ! Arguments:
     !   m = number of c components
-    !   arr = array where to store the solution
+    !   j = number of pi components
+    !   n = dimension of Fi
+    !   c = costant vector
+    !   F0 = constant matrix 
+    !   Fi = coefficient matrix 
+    !   Gi = set of constraints operators generating constraints
+    !   pi = set of constraints
         implicit none
 
-        integer, INTENT(IN)           :: m    ! dimension of x_i
-        real(8), INTENT(INOUT)        :: arr(m)  ! solution
-        CHARACTER(len=:), allocatable :: vals(:)
-        CHARACTER(200)                line
-        CHARACTER(:), ALLOCATABLE     :: stripped_line
-        INTEGER                       ii, jj, kk, NUM_LINES
+        integer,intent(in)  :: m            ! number of x_i
+        integer,intent(in)  :: j            ! number of x_i
+        integer,intent(in)  :: n            ! dimension of F0
+        real(8),INTENT(IN)  :: c(m)         ! costant vector of c_i
+        real(8),INTENT(IN)  :: F0(n,n)      ! it is rho_0 from complex to real
+        real(8),INTENT(IN)  :: Fi(m,n,n)    
+        real(8),INTENT(IN)  :: Gi(j,n,n)    
+        real(8),INTENT(IN)  :: pi(j)    
+        INTEGER             ii, jj
+        INTEGER,PARAMETER   :: uf=15      !file unit
 
-        ii = 0; kk = 0
-        open(unit=20, file="sdp.out", action='READ')
+        ! open file
+        open(unit=uf, file="sdp.dat", action="write")
 
-        ! num lines
-        do while (kk == 0)
-            NUM_LINES = NUM_LINES + 1
-            read(20,'(A)', iostat=kk) line
-            if(ii==1)then
-                call strip_spaces(line,stripped_line)
-                stripped_line = stripped_line(2:len(stripped_line)-1)
-                call split(stripped_line, vals, ",")
-                do jj = 1, size(vals)
-                    read(vals(jj),*) arr(jj)
-                enddo
-                ! call mat_dump(arr)
-                close(20); return
+        ! write titleand comment
+        write(uf,'(A)') '"sdp problem"'
+        write(uf,'(i0,A)') m," = mDIM"          ! m
+        write(uf,'(i0,A)') j+1," = nBLOCK"  ! j-gamma constraints, 1 trace constr, 1 positivity constr, 1 hermiticity constr    
+        write(uf,'(A)',advance="no") "("   ! positivity (-n because it is antisymmetric)
+        do ii = 1, j
+            write(uf,'("-1,")',advance="no")            ! gamma_i
+        enddo
+        write(uf,'("-1) = bLOCKsTRUCT")')               ! tr = 1
+
+        ! write C
+        write(uf,'("{")',advance="no")
+        do jj = 1, m
+            write(uf, '("",es20.10,"")' ,advance="no") c(jj)
+            if(jj<m)then
+                write(uf,'(",")',advance="no")
             endif
-            if(line == "xVec = ")then; ii=1; else; ii=0; endif
-        end do
-        close(20)
-        return
-    endsubroutine SDPA_read_solution
+        enddo
+        write(uf,'("}")')
 
-    subroutine compute_primal(r0, fr, gf, kr, sf, is, km, Oj, mi, fi, ep)
+        ! write F0
+        ! open
+        write(uf,'("{")')
+        ! tr[rho_i Gj]
+        do ii = 1, j!'(" {",f10.7,"}")'
+            write(uf,'(" ",es20.10,"")')(-real(pi(ii))+real(mat_trace(matmul(F0,Gi(ii,:,:)))))
+        enddo
+        ! tr = 1
+        write(uf,'(" ",es20.10,"")') (-1.+real(mat_trace(F0)))
+        ! close
+        write(uf,'("}")')
+
+        ! write Fi
+        do ii = 1, m
+            ! open
+            write(uf,'("{")')
+            ! x_k Tr[Omega_k Gj]
+            do jj = 1, j
+                write(uf,'(" ",es20.10,"")') real(mat_trace(matmul(Fi(ii,:,:),Gi(jj,:,:))))
+            enddo
+            ! tr = 1
+            write(uf,'(" ",es20.10,"")') real(mat_trace(Fi(ii,:,:)))
+            ! close
+            write(uf,'("}")')
+        enddo
+
+        ! close sdp.out
+        close(uf)
+
+        ! execute command to perform SDPA solving
+        call execute_command_line("sdpa sdp.dat sdp.out",wait=.true.)
+        return
+    endsubroutine solve_sdpa
+
+    subroutine solve_sparse_sdpa(m, j, n, c, F0, Fi, Gi, pi)
+    ! Writes the SDP problem given by
+    !   minimize  : sum_i( x_i*c_i )
+    !   subject to: sum_i( x_i*F_i - F0 ) >= 0
+    !               Tr[(sum_j x_j*F_j - F0)@Gi] = pi 
+    ! onto a text file sdp.dat and launches SDPA.exe in order to so-
+    ! lve it.
+    ! ---------------------------------------------------------------
+    ! Arguments:
+    !   m = number of c components
+    !   j = number of pi components
+    !   n = dimension of Fi
+    !   c = costant vector
+    !   F0 = constant matrix 
+    !   Fi = coefficient matrix 
+    !   Gi = set of constraints operators generating constraints
+    !   pi = set of constraints
+        implicit none
+
+        integer,intent(in)  :: m            ! number of x_i
+        integer,intent(in)  :: j            ! number of x_i
+        integer,intent(in)  :: n            ! dimension of F0
+        real(8),INTENT(IN)  :: c(m)         ! costant vector of c_i
+        real(8),INTENT(IN)  :: F0(n,n)      ! it is rho_0 from complex to real
+        real(8),INTENT(IN)  :: Fi(m,n,n)    
+        real(8),INTENT(IN)  :: Gi(j,n,n)    
+        real(8),INTENT(IN)  :: pi(j)    
+        INTEGER             ii, jj
+        INTEGER,PARAMETER   :: uf=15      !file unit
+
+        ! open file
+        open(unit=uf, file="sdp.dat-s", action="write")
+
+        ! write titleand comment
+        write(uf,'(A)') '"sdp problem"'
+        write(uf,'(i0,A)') m," = mDIM"         ! m
+        write(uf,'("1 = nBLOCK")')             ! j-gamma constraints, 1 trace constr, 1 positivity constr, 1 hermiticity constr    
+        write(uf,'(i0,A)') -(m+1)," = bLOCKsTRUCT"
+
+        ! write C
+        write(uf,'("{")',advance="no")
+        do jj = 1, m
+            write(uf, '("",es20.10,"")' ,advance="no") c(jj)
+            if(jj<m)then
+                write(uf,'(",")',advance="no")
+            endif
+        enddo
+        write(uf,'("}")')
+        
+        ! write F0
+        ! tr[rho_i Gj]
+        do ii = 1, j!'(" {",f10.7,"}")'
+            write(uf,'("0   1   ",i0,"   ",i0,"   ",f20.10)')ii,ii,&
+            &(-real(pi(ii))+real(mat_trace(matmul(F0,Gi(ii,:,:)))))
+        enddo
+
+        ! write Fi
+        do ii = 1, m
+            ! open
+            ! x_k Tr[Omega_k Gj]
+            do jj = 1, j
+                write(uf,'(i0,"   1   ",i0,"   ",i0,"   ",f20.10)')ii,jj,jj,&
+                &real(mat_trace(matmul(Fi(ii,:,:),Gi(jj,:,:))))
+            enddo
+            ! close
+        enddo
+
+        ! close sdp.out
+        close(uf)
+
+        ! execute command to perform SDPA solving
+        call execute_command_line("sdpa sdp.dat-s sdp.out",wait=.true.)
+        return
+    endsubroutine solve_sparse_sdpa
+
+    subroutine SDPA_read_solution(m, arr)
+        ! Reads the SDPA solution written in the result file sdp.out
+        ! ---------------------------------------------------------------
+        ! Arguments:
+        !   m = number of c components
+        !   arr = array where to store the solution
+            implicit none
+    
+            integer, INTENT(IN)           :: m    ! dimension of x_i
+            real(8), INTENT(INOUT)        :: arr(m)  ! solution
+            CHARACTER(len=:), allocatable :: vals(:)
+            CHARACTER(200)                line
+            CHARACTER(:), ALLOCATABLE     :: stripped_line
+            INTEGER                       ii, jj, kk, NUM_LINES
+    
+            ii = 0; kk = 0
+            open(unit=20, file="sdp.out", action='READ')
+    
+            ! num lines
+            do while (kk == 0)
+                NUM_LINES = NUM_LINES + 1
+                read(20,'(A)', iostat=kk) line
+                if(ii==1)then
+                    call strip_spaces(line,stripped_line)
+                    stripped_line = stripped_line(2:len(stripped_line)-1)
+                    call split(stripped_line, vals, ",")
+                    do jj = 1, size(vals)
+                        read(vals(jj),*) arr(jj)
+                    enddo
+                    ! call mat_dump(arr)
+                    close(20); return
+                endif
+                if(line == "xVec = ")then; ii=1; else; ii=0; endif
+            end do
+            close(20)
+            return
+        endsubroutine SDPA_read_solution
+
+    subroutine compute_primal(r0, fr, gf, kr, sf, is, km, Oj, Gi, pi, mi, fi, ep)
     ! Compute_primal: computes the primal SDP problem
     ! ---------------------------------------------------------------
     ! Arguments:
@@ -345,17 +630,18 @@ module QKD
     !   ep = tolerance of the algorithm    
         implicit none
     
-        complex(8), INTENT(IN)                     :: r0(:,:)
-        real(8), INTENT(INOUT)                     :: fr
-        complex(8), INTENT(INOUT)                  :: gf(:,:), is(:,:), sf(:,:), kr(:,:,:),&
-        &Oj(:,:,:), km(:,:,:)
-        INTEGER, INTENT(IN), OPTIONAL              :: mi, fi
-        REAL(8), INTENT(IN), OPTIONAL              :: ep
-        complex(8), dimension(:,:), ALLOCATABLE    :: rho_i, rho_4, rho_5, delta_rho, logrho, rho_temp
-        real(8), ALLOCATABLE                       :: oj_dbl(:,:,:), c_i(:), F0_real(:,:), x_i(:)
-        INTEGER                                    :: mit, finesse, counter, m, siz, iostat, jj, kk
-        real                                       :: Ppass
-        real(8)                                    :: f_1, f_2, uu, tt, epsilon
+        complex(8),INTENT(IN)                  :: r0(:,:)
+        real(8),INTENT(OUT)                    :: fr
+        complex(8),INTENT(OUT)                 :: gf(:,:)
+        complex(8),intent(In)                  :: is(:,:),sf(:,:),kr(:,:,:),Oj(:,:,:),km(:,:,:),Gi(:,:,:)
+        real(8),INTENT(IN)                     :: pi(:)
+        INTEGER,INTENT(IN),OPTIONAL            :: mi, fi
+        REAL(8),INTENT(IN),OPTIONAL            :: ep
+        complex(8),dimension(:,:),ALLOCATABLE  :: rho_i, rho_4, rho_5, delta_rho, logrho, rho_temp
+        real(8),ALLOCATABLE                    :: oj_real(:,:,:),c_i(:),F0_real(:,:),x_i(:),Gi_real(:,:,:)
+        INTEGER                                :: mit, finesse, counter, m, j, siz, iostat, jj, kk
+        real(8)                                :: f_1, f_2, uu, tt, epsilon
+        real                                   :: Ppass
     
         if(present(mi))then
             mit = mi
@@ -378,9 +664,17 @@ module QKD
         ! find the real matrices starting from the complex oj set
         m = size(oj,1)
         siz = size(oj,2)
-        allocate(oj_dbl(m, 2*siz, 2*siz))
+        allocate(oj_real(m, 2*siz, 2*siz))
         do jj = 1, m
-            call complex_to_realm(siz, oj(jj,:,:), oj_dbl(jj,:,:))
+            call complex_to_realm(siz, oj(jj,:,:), oj_real(jj,:,:))
+        enddo
+
+        ! find the real matrices of Gamma_i
+        j = size(gi,1)
+        siz = size(gi,2)
+        allocate(gi_real(j, 2*siz, 2*siz))
+        do jj = 1, j
+            call complex_to_realm(siz, gi(jj,:,:), gi_real(jj,:,:))
         enddo
 
         ! while counter <= mit
@@ -391,19 +685,21 @@ module QKD
         ! apply the CP map G_e
             allocate(rho_4(size(is, 1), size(is, 1)), rho_5(size(is, 1), size(is, 1)))
             call CP_map(rho_i, kr, sf, is, rho_4, Ppass)
+            rho_4 = rho_4/mat_trace(rho_4)
         ! apply key map
             rho_5 = cmplx(0., 0.)
             do jj = 1, size(km, 1)
                 rho_5 = rho_5 + matmul(matmul(km(jj,:,:),rho_4),km(jj,:,:))
             enddo
+            rho_5 = rho_5/ real(mat_trace(rho_5))
             ! check if the density operator is physical
             siz = size(rho_5,1)
-            call checkpoint(real(mat_trace(rho_5))-1 <= 1e-6, text="Tr(rho_5)/=1",var=mat_trace(rho_5))
-            call checkpoint(is_hermitian(rho_5,siz),text="rho_5 is not hermitian")
-            call checkpoint(is_positive(rho_5,siz,1e0),text="rho_5 is not positive")
+            ! call checkpoint(real(mat_trace(rho_5))-1 <= 1e-6, text="compute_primal::Tr(rho_5)/=1",var=mat_trace(rho_5))
+            ! call checkpoint(is_hermitian(rho_5,siz),text="compute_primal::rho_5 is not hermitian")
+            ! call checkpoint(is_positive(rho_5,siz,1e-5),text="compute_primal::rho_5 is not positive")
 
         ! f_rho
-            fr = RelativeEntropy(rho_4, rho_5, siz)
+            fr = RelativeEntropy(rho_4, rho_5, siz)!22636!*ppass
 
         ! define gradient [grad_f(rho)]^T = G**+(log[G(rho)]) - G**+(log[Z(G(rho))])
             gf = cmplx(0.,0.)
@@ -425,172 +721,87 @@ module QKD
             logrho = logmz(rho_5,siz)
             ! inverse function
             call CP_map_inverse(logrho, kr, sf, is, rho_temp)
-            gf = transpose(gf - rho_temp)/log(2.)
+            gf = (gf - rho_temp)/log(2.)
             deallocate(logrho, rho_temp)
 
         ! solve SDP
             siz = size(rho_i, 1)
             ALLOCATE(c_i(m))
             do jj = 1, m
-                c_i(jj) = real(mat_trace(matmul(oj(jj,:,:), gf)),4)
+                c_i(jj) = real(mat_trace(matmul(oj(jj,:,:),gf)))
             enddo
             allocate(F0_real(2*siz,2*siz))
             call complex_to_realm(siz,-rho_i,F0_real)
-            call SDPA_write_problem(m,2*siz,c_i,F0_real,oj_dbl)
+            ! call SDPA_write_problem(m,2*siz,c_i,F0_real,Oj_real)
+            ! call SDPA_write_problem1(m,j,2*siz,c_i,F0_real,Oj_real,Gi_real,pi)
+            call solve_sparse_SDPA(m,j,2*siz,c_i,F0_real,Oj_real,Gi_real,pi)!solve_SDPA
             allocate(x_i(m))
             call SDPA_read_solution(m,x_i)
+            write(*,*) " the value at iteration ", counter
             write(*,*) " f(rho) =", fr
 
-            ! find delta_rho
+        ! find delta_rho
             siz = size(rho_i,1)
             allocate(delta_rho(siz, siz))
             delta_rho = cmplx(0.,0.)
             do jj = 1, m
                 delta_rho = delta_rho + x_i(jj)*Oj(jj,:,:)
             enddo
-            ! call solve_sdp(rho_i, delta_rho, gf, Oj)
+            ! normalize
+            ! delta_rho = delta_rho/norm2(x_i)
+            print*, "norm xi ",norm2(x_i)
+            print*, "sum pi ",sum(pi)
 
         ! convergence check
-            if(abs(real(mat_trace(matmul(transpose(delta_rho),gf)))).le.epsilon) then
-                write(*,*) "algorithm exited at: ", counter, "step (precision=", &
-                &real(mat_trace(matmul(transpose(delta_rho), gf))),")"
-                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_dbl,c_i,F0_real,stat=iostat)
-                exit
-            else if(counter==mit) then
+            if(abs(real(mat_trace(matmul(delta_rho,gf)))).le.epsilon) then
+                write(*,*)"algorithm exited at: ",counter,"step (precision=",&
+                &real(mat_trace(matmul(delta_rho,gf))),")"
+                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_real,c_i,F0_real,stat=iostat)
+                return
+            elseif(counter==mit) then
                 write(*,*) "algorithm reached maxit: ", mit
-                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_dbl,c_i,F0_real,stat=iostat)
-                exit
+                DEALLOCATE(delta_rho,rho_i,rho_4,rho_5,x_i,oj_real,c_i,F0_real,stat=iostat)
+                return
             endif
 
         ! find tt \in [0, 1]
             tt = 0.
             f_1 = fr
             siz = size(rho_4, 1)
-            do jj = 0, finesse
+            do jj = 1, finesse
                 uu = dble(jj)/dble(finesse)
-                rho_4 = cmplx(0., 0.); rho_5 = cmplx(0., 0.)    ! set var to zero
+                rho_4 = cmplx(0.,0.); rho_5 = cmplx(0.,0.)    ! set var to zero
                 call CP_map((rho_i + uu*delta_rho), kr, sf, is, rho_4, Ppass)
                 do kk = 1, size(km, 1)
                     rho_5 = rho_5 + matmul( matmul( km(kk,:,:), rho_4 ), km(kk,:,:) )
                 enddo
-                f_2 = RelativeEntropy(rho_4, rho_5, siz)
-                if(f_2<=f_1) then
+                rho_5 = rho_5 / real(mat_trace(rho_5))
+                f_2 = RelativeEntropy(rho_4, rho_5, siz)!22636
+                if(f_2.le.f_1) then
                     tt = uu
                     f_1 = f_2
                 endif
             enddo
 
         ! if f_1 == fr EXIT
-            if(abs(f_1-fr) <= 1e-8) exit
+            if(abs(f_1-fr) <= 1e-8) return
         ! assign new rho_i
             rho_i = rho_i + delta_rho * tt
         ! increment counter
             counter = counter + 1
         ! deallocation
-            DEALLOCATE(delta_rho, rho_4, rho_5, x_i, c_i, F0_real, stat=iostat)
-            call checkpoint(iostat==0, text="while loop deallocation failed")
+            DEALLOCATE(delta_rho,rho_4,rho_5,x_i,c_i,F0_real,stat=iostat)
+            call checkpoint(iostat==0,text="compute_primal::while loop deallocation failed")
         enddo
-        DEALLOCATE(oj_dbl,rho_i,c_i,stat=iostat)
+        DEALLOCATE(oj_real,rho_i,c_i,stat=iostat)
         return
     endsubroutine compute_primal
 
 endmodule QKD
 
 
-! subroutine SDPA_write_problem(m, n, c, F0, Fi, Gi, pi)
-!     ! Writes the SDP problem given by
-!     !   minimize  : sum_i( x_i*c_i )
-!     !   subject to: sum_i( x_i*F_i - F0 ) >= 0
-!     ! onto a text file sdp.dat and launches SDPA.exe in order to so-
-!     ! lve it.
-!     ! ---------------------------------------------------------------
-!     ! Arguments:
-!     !   m = number of c components
-!     !   n = dimension of Fi
-!     !   c = costant vector
-!     !   F0 = constant matrix 
-!     !   Fi = coefficient matrix 
-!     !   Gi = set of constraints operators generating constraints
-!     !   pi = set of constraints
-!         implicit none
 
-!         integer,intent(in)    :: m            ! number of x_i
-!         integer,intent(in)    :: n            ! dimension of F0
-!         real(8),INTENT(IN)    :: c(m)         ! costant vector of c_i
-!         real(8),INTENT(IN)    :: F0(n,n)       
-!         real(8),INTENT(IN)    :: Fi(n,n,n)    
-!         complex(8),INTENT(IN) :: Gi(:,:,:)    
-!         real(8),INTENT(IN)    :: pi(:)    
-!         INTEGER               ii, jj, kk, sz
 
-!         ! open file
-!         open(unit=15, file="sdp.dat")
-
-!         ! write titleand comment
-!         write(15,'(A)') '"sdp problem"'
-!         write(15,'(i0,A)') m," = mDIM"          ! m
-!         write(15,'(A)') "1 = nBLOCK"            ! 
-!         write(15,'(i0,A)') n," = bLOCKsTRUCT"   ! n
-
-!         ! write C
-!         sz = size(c)
-!         write(15,'("{")',advance="no")
-!         do jj = 1, sz
-!             write(15, '(f7.4)' ,advance="no") c(jj)
-!             if(jj<sz)then
-!                 write(15,'(",")',advance="no")
-!             endif
-!         enddo
-!         write(15,'("}")')
-
-!         ! write F0
-!         sz = size(F0,1)
-!         write(15,'("{")',advance="no")
-!         do jj = 1, sz
-!             write(15,'("{")',advance="no")
-!             do kk = 1, sz
-!                 write(15, '(f7.4)' ,advance="no") F0(jj, kk)
-!                 if(kk<sz)then
-!                     write(15,'(",")',advance="no")
-!                 endif
-!             enddo
-!             write(15,'("}")',advance="no")
-!             if(jj<sz)then
-!                 write(15,'(",")',advance="no")
-!             endif
-!         enddo
-!         write(15,'("}")',advance="no")
-
-!         ! write Fi
-!         do ii = 1, m
-!             write(15,*)''
-!             write(15,'("{")',advance="no")
-!             do jj = 1, sz
-!                 write(15,'("{")',advance="no")
-!                 do kk = 1, sz
-!                     write(15, '(f7.4)' ,advance="no") Fi(ii, jj, kk)
-!                     if(kk<sz)then
-!                         write(15,'(",")',advance="no")
-!                     endif
-!                 enddo
-!                 write(15,'("}")',advance="no")
-!                 if(jj<sz)then
-!                     write(15,'(",")',advance="no")
-!                 endif
-!             enddo
-!             write(15,'("}")',advance="no")
-!             if(jj<sz)then
-!                 write(15,'(",")',advance="no")
-!             endif
-!         enddo
-
-!         ! close sdp.out
-!         close(15)
-
-!         ! execute command to perform SDPA solving
-!         call execute_command_line("sdpa sdp.dat sdp.out", wait=.true.)
-!         return
-!     endsubroutine SDPA_write_problem
 
 ! subroutine solve_sdp(r0, dr, gf, gb)
     !     ! r0 = rho_0

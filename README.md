@@ -1,2 +1,4 @@
 # simulazione
-this repo contains python and fortran code to perform a reliable lowerbound for QKD key rate.
+this repo contains Python and Fortran 90 code to perform a reliable lower bound for QKD key rate.
+
+Still Fortran 90 program has problems with the SDP solution

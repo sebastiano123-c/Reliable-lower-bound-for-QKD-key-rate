@@ -130,7 +130,7 @@
     #    7- calculation of the constraints:
     #           p_i = Tr[POVM_i . \rho_AB]
     #
-    #   ALGORITHM:
+    #   SDP OPTIMIZATION ALGORITHM:
     #    1- set counter=0, epsilon, maxit and rho_0 as starting point using the Gamma_tilde
     #           rho_0 = \sum_i gamma_tilde_i Gamma_tilde_i  +  \sum_j  omega_j  Omega_j
     #   STEP 1
@@ -714,10 +714,10 @@ for uu in qber:
 print(" --- ", time.time() - start_time, "s --- ")
 
 # plot
-plt.plot(qber, simple_step1_bounds, "*", label="simple bb84 step 1")
-plt.plot(qber, simple_step2_bounds, "+", label="simple bb84 step 2")
-plt.plot(qber, step1_bounds, "*", label="bb84 step 1")
-plt.plot(qber, step2_bounds, "+", label="bb84 step 2")
+plt.plot(qber, simple_step1_bounds, "*", alpha=0.4, label="simple bb84")
+# plt.plot(qber, simple_step2_bounds, "+", label="simple bb84 step 2")
+plt.plot(qber, step1_bounds, "o", alpha=0.4, label="bb84")
+# plt.plot(qber, step2_bounds, "+", label="bb84 step 2")
 plt.plot(qber, theoric_bounds, "--", label="theoric")
 plt.title(" Reliable key rate lower bound for BB84 (Pz="+str(round(Pz,3))+")")
 plt.xlabel("QBER")
