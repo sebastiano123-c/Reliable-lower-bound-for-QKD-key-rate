@@ -9,15 +9,15 @@
     #       Python 3
     #
     #   DESCRIPTION:
-    #      "THIS SCRIPT FINDS A RELIABLE LOWER BOUND FOR THE SECRET 
-    #       KEY RATE OF THE BB84 PROTOCOL WITH TWO MUBs IN THE PREPARE 
+    #      "THIS SCRIPT FINDS A RELIABLE LOWER BOUND FOR THE SECRET
+    #       KEY RATE OF THE BB84 PROTOCOL WITH TWO MUBs IN THE PREPARE
     #       AND MEASURE (P&M) SCHEME.
     #       TO RECOVER THE ENTANGLED-BASED (EB) SCHEMES SECURITY
-    #       PROOF, SOURCE-REPLACEMENT SCHEME IS PERFORMED (A 
+    #       PROOF, SOURCE-REPLACEMENT SCHEME IS PERFORMED (A
     #       BRIEF DESCRIPTION IS PRESENTED HERE BELOW).
     #       LOWER BOUND IS FOUND FIRSTLY CALCULATING THE MINIMUM OF A
-    #       SEMIDEFINITE POGRAM (SDP); THUS, THE PROBLEM IS INVERTED,
-    #       AND NOW IT A MAXIMIZATION OF A FUNCTION.
+    #       SEMIDEFINITE POGRAM (SDP); THEN, THE PROBLEM IS INVERTED,
+    #       AND REALISED AS A MAXIMIZATION OF A FUNCTION.
     #       THE TWO RESULTS MAY BE VERY CLOSE TO EACH OTHER AND PROVIDE A
     #       RELIABLE LOWER BOUND ON THE KEY RATE."
     #
@@ -28,7 +28,8 @@
     #   PACKAGES REQUIRED:
     #    * numpy
     #    * scipy
-    #    * cvxpy (with solvers CVXOPT, it can be obtained by 'pip install cvxopt')
+    #    * cvxpy (with solvers CVXOPT (it can be obtained by 'pip install cvxopt')
+    #                       or MOSEK)
     #    * matplotlib
     #
     #   SYMBOLS INDEX:
@@ -39,15 +40,16 @@
     #    5)  s.t.= such that
     #
 #---------------------------------------------------------------------
-# Entangled Based (EB) scheme:
+# Preapare and Measure (P&M) scheme and Entangled Based (EB) scheme:
 #---------------------------------------------------------------------
+    #  Entangled Based (EB) scheme:
     # " An entangled state composed of two photons is created.
     #   One particle is given to Alice, one to Bob.
     #   Both perform a measurment in one of the two bases."
     #
-    #              |Psi>          
-    #   Alice <______|______>   Bob    
-    #   
+    #              |Psi>
+    #   Alice <______|______>   Bob
+    #
     # Prepare and Measure (P&M) scheme:
     # " Alice prepares a qubit and sends it to Bob."
     #
@@ -58,7 +60,7 @@
     # register in H^4 and A' is the register in which is encoded the bit,
     # so it is a H^2.
     #
-    #   QUANTUM CHANNEL: 
+    #   QUANTUM CHANNEL:
     #    * DEPOLARIZING CHANNEL;
     #
 #---------------------------------------------------------------------
@@ -78,7 +80,7 @@
     #   :      POVM_A                 :                                          :    POVM_B     :
     #   :.............................:                                          :...............:
     #
-    #   STATE A    : STATE A'(B') : BASIS CHOICE : BIT VALUE 
+    #   STATE A    : STATE A'(B') : BASIS CHOICE : BIT VALUE
     #       |0>    :     |0>      :      Z       :     0
     #       |1>    :     |1>      :      Z       :     1
     #       |+>    :     |+>      :      X       :     0
@@ -104,7 +106,7 @@
     #                 = A(\rho)
     #   4- SIFTING PHASE:
     #       viewed as a projector of the form
-    #           Proj = \sum_{a,b} |a><a|_{\tilde{A}} .o. |b><b|_{\tilde{B}} 
+    #           Proj = \sum_{a,b} |a><a|_{\tilde{A}} .o. |b><b|_{\tilde{B}}
     #       and identities elsewhere.
     #   5- KEY MAP:
     #       write the key map as the function g(a, \alpha_a, b). We deﬁne an isometry V that stores the key
@@ -114,7 +116,7 @@
     #       decohere the register in order to obtain a classical register R
     #           Z(\sigma) = \sum_j (|j><j|_R .o. I ).\sigma.(|j><j|_R .o. I )
     #       where I denotes the identity acting on the other subsystems.
-    #   
+    #
     #   CALCULATION:
     #    1- construct the state rho_AB;
     #    2- quantum channel acting on rho_AB (like depolarization, etc.);
@@ -126,7 +128,7 @@
     #           Gamma_i = POVM_i
     #       and find the Gram-Schmidt process for them.
     #    6- enlarge the basis using THeta_j complete set for A s.t.
-    #           Tr[ \Theta_j \rho_AB] = \theta_j      
+    #           Tr[ \Theta_j \rho_AB] = \theta_j
     #    7- calculation of the constraints:
     #           p_i = Tr[POVM_i . \rho_AB]
     #
@@ -136,7 +138,7 @@
     #   STEP 1
     #    2- calculate
     #           f(\rho) = D( G(\rho_0) || Z(G(\rho_0)) )
-    #       where 
+    #       where
     #           D(\rho||\sigma) = Tr[ \rho. log(\rho) ] - Tr[ \rho. log(\sigma) ]
     #       is the Relative Entropy.
     #    3- calculate the gradient of this function
@@ -148,12 +150,12 @@
     #    5- encrease the counter by 1 and set \rho_0 = \rho_0 + tt*\Delta rho
     #       for the next iteration and repeat from 2-.
     #    IF: counter == maxit GOTO STEP 2.
-    #           
+    #
     #   STEP 2
     #    0- from STEP 1 we know \rho and its gradient
-    #    1- maximize : gamma_i.y 
+    #    1- maximize : gamma_i.y
     #      subject to: sum_j y_j Gamma_j <= grad_f(\rho)
-    #   
+    #
     #   LOWER BOUND:
     #    the result is:
     #      f(rho) - Tr( rho . grad_f(rho) ) + max{gamma_i.y }
@@ -162,7 +164,7 @@
 # The program is diveded in two parts:
 #   1) explanation of the conceptual steps of the procedure and
 #      the declaration of the usefule operators;
-#   2) the algorithm procedure implementing the operators defined in 
+#   2) the algorithm procedure implementing the operators defined in
 #      the previous point and SDP minimization procedure.
 # N.B.: the algorithm is a recursive iteration incrementing the depolarization
 #       probability.
@@ -180,37 +182,46 @@ start_time = time.time()
 
 # parameters
 epsilon = 1e-10
-Pz = 0.5
-start, stop, step = 0., 0.12, 20
-maxit = 20
-finesse = 10
+Pz = 0.1
+start, stop, step = 0., 0.12, 3
+maxit = 100
+finesse = 5
+solver_name = "MOSEK"
 
 # pauli matrices
 pauli = [[[1,0],[0,1]], [[0,1],[1,0]], [[0,-1j],[1j,0]], [[1,0],[0,-1]]]
 
-# define qubits 
+# define qubits
 zero = np.array([1,0])
 one = np.array([0,1])
 states = [zero, one, (zero+one)/np.sqrt(2.), (zero-one)/np.sqrt(2.)]
 
-# probabilities
+# ALICE probabilities
 Px = (1. - Pz)
-postselect_prob = np.array([Pz/2, Px/2]) 
-Prob = [Pz/2., Pz/2., Px/2., Px/2]
-if (np.sum(Prob) != 1): print("Prob != 1")
+ProbAlice = [Pz/2., Pz/2., Px/2., Px/2.]
+if (np.sum(ProbAlice) != 1): print("ProbAlice != 1")
 
-# define ids
+# BOB porbabilities
+BS = [0.70, 0.30] # beamsplitter
+ProbBob = [BS[0]/2., BS[0]/2., BS[1]/2., BS[1]/2.]
+if (np.sum(ProbBob) != 1): print("ProbBob != 1")
+
+#  post selection and probability of passing the post selection process
+postselect_prob = [Pz*BS[0], Px*BS[1]]
+ppass = sum(postselect_prob)
+
+# define identities for convinience
 id_2 = np.eye(2)
 id_4 = np.eye(4)
 id_8 = np.eye(8)
 id_64 = np.eye(64)
 id_128 = np.eye(128)
 
-# local proj
-sigma_00 = np.outer(states[0], np.conj(states[0]))
-sigma_11 = np.outer(states[1], np.conj(states[1]))
-sigma_pp = np.outer(states[2], np.conj(states[2]))
-sigma_mm = np.outer(states[3], np.conj(states[3]))
+# local measurments (|0><0|, |1><1|, |+><+| and |-><-|)
+sigma_00 = np.outer( states[0], np.conj(states[0]) )
+sigma_11 = np.outer( states[1], np.conj(states[1]) )
+sigma_pp = np.outer( states[2], np.conj(states[2]) )
+sigma_mm = np.outer( states[3], np.conj(states[3]) )
 
 # functions
 def gram_schmidtm(V):
@@ -247,7 +258,10 @@ def extend_basism(V, B):
 def quantum_entropy(rho):
     """
     Computes the von Neumann entropy of a given quantum state.
-    :param rho: 2D numpy ndarray
+    --------------------------------------
+    args:
+    rho: density matrix
+    return tr[rho@log[rho]]
     """
     fudge = 1e-16
     sh = rho.shape
@@ -255,58 +269,55 @@ def quantum_entropy(rho):
     return -1 * np.trace(np.matmul(rho, logm(new_rho)))
 
 def relative_entropy(rho, sigma):
-    # avlr = np.real(np.linalg.eigvals(rho))
-    # avls = np.real(np.linalg.eigvals(sigma))
-    # res = 0.
-    # for ii in range(len(avlr)):
-    #     if(abs(avlr[ii])>=1e-10):
-    #         if(abs(avls[ii])>=1e-10):#if q_i is zero --> -p_i log(0) = +inf 
-    #             # sum_i p_i log(p_i/q_i)
-    #             try:
-    #                 res = res + avlr[ii] * np.log(avlr[ii]/avls[ii])/np.log(2)
-    #             except:
-    #                 print(avlr[ii], avls[ii])
-    #         else:
-    #             print("Q=0 notimply P=0")
-
-
-    # ios=0
-    # for ii in range(np.shape(sigma)[0]):
-    #     for jj in range(np.shape(sigma)[1]):
-    #         if(abs(sigma[ii,jj])>=1e-10):
-    #             print(ii,jj,sigma[ii,jj])
-    #             ios=ios+1
-    # print(ios)
-    # exit()
+    '''
+    relative_entropy: computes D(a||b) = a@log(a)-a@log(b)
+    ---------------------------------------------
+    Keyword arguments:
+    rho: first density matrix
+    sigma: second density matrix
+    return D(rho||sigma)
+    '''
 
     # tr[ rho @ logm(rho)]
     res = - quantum_entropy(rho)/np.log(2)
+
     # tr[ rho @ logm(sigma)]
     fudge = 1e-16
     sh = sigma.shape
+
+    # to avoid the calculation of of the log a singular matrix
     new_rho = (1 - fudge) * sigma + fudge * np.eye(sh[0])
     res = res - np.real(np.trace(rho @ logm(new_rho)))/np.log(2)
     return res
 
 def binary_entropy(p):
+    '''
+    computes the binary entropy of a given probabilty p
+    ---------------------------------------------------
+    args:
+    p = probability
+    return -p*log(p)/log(2)-(1-p)*log(1-p)/log(2)
+    '''
     if p==0: return 0
     elif p==1: return 0
     else: return - p*np.log(p)/np.log(2) - (1-p)*np.log(1-p)/np.log(2)
 
 def CP_map(rho, Kraus, sifting, isometry):
-    '''G map'''
+    '''
+    G map defined as (isometry @ sifting @ Kraus) @rho@ (isometry @ sifting @ Kraus)**+
+    '''
     rho_temp = 0.
     for ii in Kraus:
         rho_temp = rho_temp + ii @ rho @ np.conj(ii).T
     rho_temp = sifting @ rho_temp @ sifting
-    Ppass = np.real(np.trace( rho_temp ))
-    rho_temp = rho_temp / Ppass
+    Prob_pass = np.real(np.trace( rho_temp ))
+    rho_temp = rho_temp / Prob_pass
     rho_temp = isometry @ rho_temp @ np.conj(isometry).T
     #rho_temp = rho_temp / np.real(np.trace(rho_temp))
-    return rho_temp
+    return rho_temp, Prob_pass
 
 def CP_inverse_map(rho, Kraus, sifting, isometry):
-    '''inveser CP map'''
+    '''the inveser G map'''
     rho_temp = 0.
     rho_temp = np.conj(isometry).T @ rho @ isometry
     rho_temp = sifting @ rho_temp @ sifting
@@ -317,7 +328,17 @@ def CP_inverse_map(rho, Kraus, sifting, isometry):
     return rho_fin
 
 def sdp_solver(d, rho, grad_f, Gamma, gamma, solver_name='MOSEK', solver_verbosity=False):
+    '''
+    solves the semidefinite program (SDP)
+      minimize   : tr[ X**T @ grad_f ]    
+      subject to :  X + rho >> 0                            (positivity)
+                    Tr[X + rho] == 1                        (unitary trace)
+                    X + rho == (X + rho)**+                 (hermiticity)
+                    sum_j Tr[(X + rho) Gamma_j] = gamma_j   (measurments)
+    where X is the solution of the SDP.
 
+    return X
+    '''
     # minimize: X.T @ Grad_f
     X = cp.Variable((d, d), complex=True)
 
@@ -328,21 +349,21 @@ def sdp_solver(d, rho, grad_f, Gamma, gamma, solver_name='MOSEK', solver_verbosi
     constraints = constraints + [ X + rho == cp.conj(X + rho).T ] # is a Hermitian
     for ii, elm in enumerate(Gamma):
         constraints = constraints + [ cp.trace( (X + rho) @ elm)  == gamma[ii]]
-    
+
     # solve
-    obj = cp.Minimize( cp.real(cp.trace( X.T @  grad_f )) )      
+    obj = cp.Minimize( cp.real(cp.trace( X.T @  grad_f )) )
     prob = cp.Problem( obj, constraints )
     try:
         prob.solve(solver=solver_name, verbose=solver_verbosity)
     except:
         print("\n",solver_name + " failed.")
-        return np.eye(d)
+        return np.eye(d)/d
 
     # check if there is any problem in the minimization procedure
     if prob.status in ["infeasible", "unbounded"]:# Otherwise, prob.value is inf or -inf, respectively.
         print("Status problem: %s" % prob.status)
         exit()
-    
+
     # solution
     sol = X.value
 
@@ -352,18 +373,20 @@ def sdp_solver(d, rho, grad_f, Gamma, gamma, solver_name='MOSEK', solver_verbosi
     return sol
 
 def compute_primal(rho_0, Kraus, sifting, isometry, ZA, Gamma, gamma, epsilon = 1e-10, maxit = 20, finesse = 10, solver_name = 'MOSEK', solver_verbosity = False):
-
-    # set 
+    ''''
+    computes the primal problem with sdp_solver
+    '''
+    # set
     counter = 1
 
     # start algorithm
     while(counter <= maxit):
-        
+
         # dimension
         d = np.shape(rho_0)[0]
 
         # define the two states
-        rho_4 = CP_map(rho_0, Kraus, sifting, isometry)
+        rho_4, prob_pass = CP_map(rho_0, Kraus, sifting, isometry)
         rho_5 = sum( [ ii @ rho_4 @ ii for ii in ZA ] )
         rho_5 = rho_5 / np.real(np.trace(rho_5))
         if( np.abs( np.trace(rho_5) - 1. ) >= 1e-8): print("Tr[rho_5] != 1", np.trace(rho_5))
@@ -390,7 +413,7 @@ def compute_primal(rho_0, Kraus, sifting, isometry, ZA, Gamma, gamma, epsilon = 
         tt = 0.
         f_1 = bb84_frho
         for ii in np.linspace(0., 1., finesse):
-            rho_4 = CP_map(rho_0 + Delta_rho_0 * ii, Kraus, sifting, isometry)
+            rho_4, _ = CP_map(rho_0 + Delta_rho_0 * ii, Kraus, sifting, isometry)
             rho_5 = sum( [ ii @ rho_4 @ ii for ii in ZA] )
             rho_5 = rho_5 / np.trace(rho_5)
             f_2 = np.real(relative_entropy(rho_4, rho_5))
@@ -405,9 +428,17 @@ def compute_primal(rho_0, Kraus, sifting, isometry, ZA, Gamma, gamma, epsilon = 
         rho_0 = rho_0 + Delta_rho_0 * tt
         counter = counter + 1
 
-    return np.real(bb84_frho), bb84_grad
+    return prob_pass, np.real(bb84_frho), bb84_grad
 
 def compute_dual(grad_f, Gamma, gamma, solver_name = 'MOSEK', solver_verbosity = False):
+    '''
+    computes the dual problem of the SDP
+      maximize   : Y @ gamma = (Y_1, ..., Y_n) @ (gamma_1, ..., gamma_n)
+      subject to : sum_i Y_i*Gamma_i << grad_f
+    where Y is the solution of the SDP.
+    
+    return Y = (Y_1, ..., Y_n)
+    '''
 
     # maximize: y.gamma
     n = len(gamma)
@@ -427,7 +458,7 @@ def compute_dual(grad_f, Gamma, gamma, solver_name = 'MOSEK', solver_verbosity =
     if dual_prob.status in ["infeasible", "unbounded"]:
         # Otherwise, prob.value is inf or -inf, respectively.
         print("Status problem: %s" % dual_prob.status)
-    
+
     return dual_prob.value
 
 #---------------------------------------------------------------------
@@ -435,8 +466,8 @@ def compute_dual(grad_f, Gamma, gamma, solver_name = 'MOSEK', solver_verbosity =
 #---------------------------------------------------------------------
 # possible outcome measurments
 ZA = np.zeros((2, 4, 4))*1j
-ZA[0] = np.kron( sigma_00, id_2) #( |0><0| + |+><+| ) .o. id_2 --> bit 0
-ZA[1] = np.kron( sigma_11, id_2) #( |1><1| + |-><-| ) .o. id_2 --> bit 1
+ZA[0] = np.kron(sigma_00, id_2) #( |0><0| + |+><+| ) .o. id_2 --> bit 0
+ZA[1] = np.kron(sigma_11, id_2) #( |1><1| + |-><-| ) .o. id_2 --> bit 1
 
 # which have dimension 4-by-4 and satisfy POVM properties
 if ( np.allclose( sum([ np.conj(ii).T @ ii for ii in ZA] ), id_4 ) == False): print("sum POVMA**+ POVMA != 1", sum([ np.conj(ii).T @ ii for ii in ZA]) )
@@ -453,12 +484,12 @@ Gamma = [G*p for G, p in zip(Gamma, postselect_prob)]
 #---------------------------------------------------------------------
 #   for RECONCILIATION SCHEME
 #---------------------------------------------------------------------
-# After the qubit sending, Alice can measure A using the POVM 
+# After the qubit sending, Alice can measure A using the POVM
 POVMA = [
-    2*Prob[0]*sigma_00,
-    2*Prob[1]*sigma_11,
-    2*Prob[2]*sigma_pp,
-    2*Prob[3]*sigma_mm
+    0.5*sigma_00,
+    0.5*sigma_11,
+    0.5*sigma_pp,
+    0.5*sigma_mm
 ]
 # which have dimension 4-by-4 and satisfy POVM properties
 if ( np.allclose(sum([ ii for ii in POVMA]), id_2 ) == False ): print("sum POVMA**+ POVMA != 1", sum([ ii for ii in POVMA]) )
@@ -467,10 +498,10 @@ for ii in POVMA:
     if(np.all( np.linalg.eigvals(ii) < -1e-8)): print("POVMA is NEGATIVE")
 # On the other hand, Bob can measure using the POVM
 POVMB = [
-    2*Prob[0]*sigma_00,
-    2*Prob[1]*sigma_11,
-    2*Prob[2]*sigma_pp,
-    2*Prob[3]*sigma_mm
+    0.5*sigma_00,
+    0.5*sigma_11,
+    0.5*sigma_pp,
+    0.5*sigma_mm
 ]
 # which have dimension 2-by-2 and satisfy POVM properties
 if ( np.allclose(sum([ii for ii in POVMB]), id_2 ) == False ): print("sum POVMB**+ POVMB != 1", sum([ ii for ii in POVMB]) )
@@ -480,18 +511,18 @@ for ii in POVMB:
 
 # PUBLIC ANNOUNCEMENT:
 #   kraus operators of A dim = 16-by-4
-KA = [ np.kron( sqrtm(POVMA[0]), np.kron(zero[:, np.newaxis], zero[:, np.newaxis])) + 
+KA = [ np.kron( sqrtm(POVMA[0]), np.kron(zero[:, np.newaxis], zero[:, np.newaxis])) +
        np.kron( sqrtm(POVMA[1]), np.kron(zero[:, np.newaxis], one[:, np.newaxis])),
-       np.kron( sqrtm(POVMA[2]), np.kron(one[:, np.newaxis], zero[:, np.newaxis])) + 
+       np.kron( sqrtm(POVMA[2]), np.kron(one[:, np.newaxis], zero[:, np.newaxis])) +
        np.kron( sqrtm(POVMA[3]), np.kron(one[:, np.newaxis], one[:, np.newaxis]))
 ]
 #   which satisfy Kraus property
 if ( np.allclose( np.sum([ np.conj(ii).T @ ii for ii in KA]), id_2) ): print("sum KA**+ KA != 1", sum([ np.conj(ii).T @ ii for ii in KA]) )
 #   kraus operators of B dim = 8-by-4
-KB = [  np.kron(sqrtm(POVMB[0]), np.kron(zero[:, np.newaxis], zero[:, np.newaxis])) + 
-        np.kron(sqrtm(POVMB[1]), np.kron(zero[:, np.newaxis], one[:, np.newaxis])),
-        np.kron(sqrtm(POVMB[2]), np.kron(one[:, np.newaxis], zero[:, np.newaxis])) + 
-        np.kron(sqrtm(POVMB[3]), np.kron(one[:, np.newaxis], one[:, np.newaxis]))
+KB = [ np.kron(sqrtm(POVMB[0]), np.kron(zero[:, np.newaxis], zero[:, np.newaxis])) +
+       np.kron(sqrtm(POVMB[1]), np.kron(zero[:, np.newaxis], one[:, np.newaxis])),
+       np.kron(sqrtm(POVMB[2]), np.kron(one[:, np.newaxis], zero[:, np.newaxis])) +
+       np.kron(sqrtm(POVMB[3]), np.kron(one[:, np.newaxis], one[:, np.newaxis]))
 ]
 #   which satisfy Kraus property
 if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in KB]), id_2 ) ): print("sum KB**+ KB != 1", sum([ np.conj(ii).T @ ii for ii in KB]) )
@@ -504,24 +535,22 @@ for ii in KA:
 if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in K]), id_4 ) ): print("sum K**+ K != 1", sum([ np.conj(ii).T @ ii for ii in K]) )
 
 # SIFTING PHASE:
-k0b0 = np.outer([1,0],[1,0]) # |0><0|
-k1b1 = np.outer([0,1],[0,1]) # |1><1|
 #   acts like a projector with dimension 128-by-128
-proj = np.kron( id_2, np.kron( k0b0, np.kron( id_4, np.kron( k0b0, id_2 ))) ) +\
-       np.kron( id_2, np.kron( k1b1, np.kron( id_4, np.kron( k1b1, id_2 ))) )
-       
-# KEY MAP: 
+proj = np.kron( id_2, np.kron( sigma_00, np.kron( id_4, np.kron( sigma_00, id_2 ))) ) +\
+       np.kron( id_2, np.kron( sigma_11, np.kron( id_4, np.kron( sigma_11, id_2 ))) )
+
+# KEY MAP:
 #   is a isometry which creates a new register R which stores the information on the bits
 #   and it is a 258-by-258 matrix
-# V = np.kron( zero[:, np.newaxis], np.kron( id_4, np.kron( k0b0, np.kron( k0b0, np.kron( id_2, np.kron( k0b0, id_2 ) ) ) ) ) ) +\
-#     np.kron(  one[:, np.newaxis], np.kron( id_4, np.kron( k0b0, np.kron( k1b1, np.kron( id_2, np.kron( k0b0, id_2 ) ) ) ) ) )
-V = np.kron( zero[:, np.newaxis], np.kron( id_4, np.kron( k0b0, id_8))) +\
-    np.kron(  one[:, np.newaxis], np.kron( id_4, np.kron( k1b1, id_8)))
+# V = np.kron( zero[:, np.newaxis], np.kron( id_4, np.kron( sigma_00, np.kron( sigma_00, np.kron( id_2, np.kron( sigma_00, id_2 ) ) ) ) ) ) +\
+#     np.kron(  one[:, np.newaxis], np.kron( id_4, np.kron( sigma_00, np.kron( sigma_11, np.kron( id_2, np.kron( sigma_00, id_2 ) ) ) ) ) )
+V = np.kron( zero[:, np.newaxis], np.kron( id_4, np.kron( sigma_00, id_8))) +\
+    np.kron(  one[:, np.newaxis], np.kron( id_4, np.kron( sigma_11, id_8)))
 
 # PINCHING CHANNEL:
 #   decohere the register R. It has the effect of making R a classical register
-pinching = [ np.kron( k0b0 , id_64),
-             np.kron( k1b1 , id_64)]
+pinching = [ np.kron( sigma_00 , id_64),
+             np.kron( sigma_11 , id_64) ]
 
 # The POVM of the entire system is given by
 POVM = []
@@ -563,7 +592,7 @@ for ii in POVM_tilde:
     if(np.allclose( np.conj(ii).T, ii) == False ): print("POVM_tilde NOT hermitian")
     if(np.all( np.linalg.eigvals(ii) < -1e-8)): print("POVM_tilde is NEGATIVE")
 
-# Set used to extend POVM_tilde to a basis
+# this set is used to extend POVM_tilde to a basis
 Omega = []
 for ii in range(4):
     for jj in range(4):
@@ -574,13 +603,13 @@ for ii in range(4):
         if( abs(np.trace(M @ M) - 1.) >= 1e-8): print("Tr[G_mu G_mu] != 1", np.trace(M @ M))
         Omega.append( M )
 
-#Gamma_tilde = {Gamma_tilde_k} U {Omega_j}
+# Gamma_tilde = {Gamma_tilde_k} U {Omega_j}
 kk = np.shape(POVM_tilde)[0]
 Gamma_tilde_k = POVM_tilde
 Gamma_tilde = extend_basism(Omega, POVM_tilde)
 jj = np.shape(Gamma_tilde)[0] - kk
 Omega = Gamma_tilde[kk:]
-#check that the elements of the basis are orthogonal
+# check that the elements of the basis are orthogonal
 for ii, elm in enumerate(Gamma_tilde):
     for jj, val in enumerate(Gamma_tilde):
         if (ii!=jj):
@@ -597,11 +626,11 @@ if(np.shape(Gamma_tilde)[0] != np.shape(Gamma_tilde)[1]*np.shape(Gamma_tilde)[2]
 # Alice prepare psi_AA' \in H^8
 psi_aa = 0.
 for ii, elm in enumerate(states):
-    psi_aa = psi_aa + Prob[ii]*np.kron( elm, elm )
+    psi_aa = psi_aa + ProbAlice[ii]*ProbBob[ii]*np.kron( elm, elm )
 psi_aa = psi_aa / np.sqrt(np.dot(np.conj(psi_aa), psi_aa))
 # define rho_aa and check if it is physical
 rho_aa = np.outer( psi_aa, np.conj(psi_aa) )
-if( np.abs( np.trace(rho_aa) - 1.) >= 1e-8): print("Tr[rho_aa] != 1 (", np.trace(rho_aa),")")
+if( np.abs( np.trace(rho_aa) - 1.) >= 1e-8): print("Tr[rho_aa] != 1 (", np.trace(rho_aa), ")")
 if( np.allclose( np.conj(rho_aa).T, rho_aa)  == False ): print("rho_aa NOT hermitian")
 if( np.all( np.linalg.eigvals(rho_aa) < - 1e-8)): print("rho_aa is NEGATIVE")
 
@@ -632,96 +661,105 @@ for uu in qber:
     if( np.allclose( np.conj(rho_ab).T, rho_ab) == False): print("rho_ab NOT hermitian")
     if( np.all( np.linalg.eigvals(rho_ab) < - 1e-8) ): print("rho_ab is NEGATIVE")
     print("purity of rho_0     =", np.real(np.trace( rho_ab @ rho_ab )))
-   
-    #constraints
+
+    # constraints
+    # simple BB84 contraints
+    gamma = np.array([uu, uu]) * postselect_prob
     # povm constraints
-    p_j, p_tilde, theta_j, omega_j, gamma_tilde = [], [], [], [], []
+    p_j, theta_j = [], []
     for ii in POVM :
         p_j.append( np.trace( ii @ rho_ab ) )
     for ii in range(np.shape( Theta )[0]):
         theta_j.append( np.trace( Theta[ii] @ rho_ab ) )
-    # mean values of operators forming rho_ab
-    for ii in POVM_tilde:
-        p_tilde.append(np.real(np.trace( ii @ rho_ab)))
-    for ii in Omega:
-        omega_j.append(np.real(np.trace( ii @ rho_ab)))
-    for ii in Gamma_tilde:
-        gamma_tilde.append(np.trace( ii @ rho_ab))     
-
-    #gamma , Gamma
-    gam, Gam = np.concatenate((p_j, theta_j)),  np.concatenate((POVM, Theta))
+    # gamma , Gamma
+    gam, Gam = np.concatenate((p_j, theta_j)), np.concatenate((POVM, Theta))
 
     #### SDP PROBLEM ###
     counter = 1   # set counter to 0
-    #find rho_0
-    # rho_0 = 0.    
-    # #gamma tilde
-    # for ii, val in enumerate( POVM_tilde ):
-    #     rho_0 = rho_0 + p_tilde[ii]*val
-    # #omega
-    
-    # rho_0 = rho_0 / np.trace( rho_0 )
-    # rho_ab = rho_0
-    rho_0 = rho_ab
-    if( np.abs( np.trace(rho_0) - 1. ) >= 1e-8): print("Tr[rho_0] != 1", np.trace(rho_0))
-    if( np.allclose( np.conj(rho_0).T, rho_0) == False ): print("rho_0 NOT hermitian", rho_0)
-    if( np.all( np.linalg.eigvals(rho_0) < - 1e-8)): print("rho_0 is NEGATIVE")
+
+    # find rho_0
+    rho_0 = 0.
+    for ii in POVM_tilde:   # gamma tilde
+        rho_0 = rho_0 + np.real(np.trace( ii @ rho_ab ))*ii
+    for ii in Omega:        # omega
+        rho_0 = rho_0 + np.real(np.trace( ii @ rho_ab ))*ii
+    # check if rho_0 is physical
+    if(np.abs( np.trace(rho_0) - 1. ) >= 1e-8): print("Tr[rho_0] != 1", np.trace(rho_0)) 
+    if(np.allclose( np.conj(rho_0).T, rho_0) == False): print("rho_0 NOT hermitian", rho_0)
+    if(np.all( np.linalg.eigvals(rho_0) < - 1e-8 )): print("rho_0 is NEGATIVE")
+
+#---------------------------------------------------------------------
+#   for THEORICAL APPROACH
+#---------------------------------------------------------------------
+    hp = binary_entropy(uu)
+    th = (1-2*hp)
+    theoric_bounds.append(th)
 
 #---------------------------------------------------------------------
 #   for SIMPLE BB84
 #---------------------------------------------------------------------
     print("*** simple BB84")
     rho_0 = rho_ab
-    gamma = np.array([uu, uu]) * postselect_prob
-    hp = binary_entropy(uu)
-#  STEP 1
-    f_rho, grad_f = compute_primal(rho_0, [id_4], id_4, id_4, ZA, Gamma, gamma, epsilon, maxit, finesse, 'MOSEK')
-    step1_bound = np.real( f_rho ) - hp
-    if step1_bound<0: step1_bound = 0.
-    simple_step1_bounds.append(step1_bound)    
+
+ #  STEP 1
+    prob_pass, f_rho, grad_f = compute_primal(rho_0, [id_4], id_4, id_4, ZA, Gamma, gamma, epsilon, maxit, finesse, solver_name)
+    step1_bound = np.real( f_rho - hp )
+    simple_step1_bounds.append(step1_bound)
     print("Step 1 result is    = ", step1_bound)
-#  STEP 2: lower bound
+
+ #  STEP 2: lower bound
     step2_bound = compute_dual(grad_f, Gam, gam)
-    step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound) - hp
-    if step2_bound<0: step2_bound = 0.
+    step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound - hp )
     print("Step 2 result is    = ", step2_bound)
     simple_step2_bounds.append(step2_bound)
-    th = 1-2*hp
-    if th<0: th = 0.
-    theoric_bounds.append(th)
-    
+
 #---------------------------------------------------------------------
 #   for RECONCILIATION SCHEME
 #---------------------------------------------------------------------
     print("*** BB84 with reconc.")
-    counter = 1
     rho_0 = rho_ab
-    hp = binary_entropy(uu)
-#  STEP 1
-    f_rho, grad_f = compute_primal(rho_0, K, proj, V, pinching, Gam, gam, epsilon, maxit, finesse, 'MOSEK')
+
+ #  STEP 1
+    prob_pass, f_rho, grad_f = compute_primal(rho_0, K, proj, V, pinching, Gam, gam, epsilon, maxit, finesse, solver_name)
     step1_bound = np.real( f_rho - hp)
-    if step1_bound<0: step1_bound = 0.
     step1_bounds.append(step1_bound)
     print("Step 1 result is    = ", step1_bound)
 
-#  STEP 2: lower bound
+ #  STEP 2: lower bound
     step2_bound = compute_dual(grad_f, Gam, gam)
-    step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound) - hp
-    if step2_bound<0: step2_bound = 0.
+    step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + step2_bound - hp)
+
     print("Step 2 result is    = ", step2_bound)
     step2_bounds.append(step2_bound)
-
+    exit()
 print(" --- ", time.time() - start_time, "s --- ")
 
 # plot
-plt.plot(qber, simple_step1_bounds, "*", alpha=0.4, label="simple bb84")
-# plt.plot(qber, simple_step2_bounds, "+", label="simple bb84 step 2")
-plt.plot(qber, step1_bounds, "o", alpha=0.4, label="bb84")
-# plt.plot(qber, step2_bounds, "+", label="bb84 step 2")
-plt.plot(qber, theoric_bounds, "--", label="theoric")
-plt.title(" Reliable key rate lower bound for BB84 (Pz="+str(round(Pz,3))+")")
+
+# traces
+plt.plot(qber, theoric_bounds, "b--", linewidth=1, alpha=0.5, label="theoric standard BB84")
+# plt.plot(qber, simple_step1_bounds, "gx", alpha=0.5, label="simple bb84 step 2")
+# plt.plot(qber, simple_step2_bounds, "o", alpha=0.5, label="simple bb84 step 2")
+plt.plot(qber, step1_bounds, "r+", alpha=0.5, label="bb84 step 1")
+plt.plot(qber, step2_bounds, ".", alpha=0.5, label="bb84 step 2")
+
+# bounds
+plt.ylim(bottom=0)
+plt.xlim([-1e-4,.12])
+
+# title
+plt.title("Reliable key rate lower bound for three states BB84 (Pz="+str(round(Pz,3))+")")
+
+# axis labels
 plt.xlabel("QBER")
 plt.ylabel("asymptotic key rate")
+
+# legend
 plt.legend(loc='best')
+
+# grid
 plt.grid(True)
+
+# show
+# plt.savefig("analysis/plot_real_low_bnd_"+str(int(100*Pz)))
 plt.show()

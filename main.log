@@ -1,4 +1,4 @@
-This is LuaHBTeX, Version 1.14.0 (MiKTeX 21.7) (format=lualatex 2021.7.26)  30 SEP 2021 18:50
+This is LuaHBTeX, Version 1.14.0 (MiKTeX 21.7) (format=lualatex 2021.7.26)  1 OCT 2021 09:51
  restricted system commands enabled.
  file:line:error style messages enabled.
 **c:/Univ/Magistrale/Tesi/simulazione/main.tex
@@ -1603,15 +1603,15 @@ File: ujkpsyc.fd 2006/08/15 v1.0
 )
 
 Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 121.
+(hyperref)                be the same. Added a new anchor on input line 122.
 
 
 Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 129.
+(hyperref)                be the same. Added a new anchor on input line 130.
 
 
 Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 134.
+(hyperref)                be the same. Added a new anchor on input line 135.
 
 [1
 
@@ -1627,7 +1627,7 @@ Here is how much of LuaTeX's memory you used:
  607 words of node memory still in use:
    7 hlist, 2 vlist, 2 rule, 2 glue, 8 kern, 2 glyph, 12 attribute, 64 glue_spec
 , 12 attribute_list, 2 write nodes
-   avail lists: 1:9,2:497,3:437,4:63,5:270,6:54,7:2230,8:30,9:246,10:8,11:150
+   avail lists: 1:9,2:497,3:434,4:63,5:270,6:57,7:2299,8:30,9:249,10:8,11:159
  50246 multiletter control sequences out of 65536+600000
  78 fonts using 6433767 bytes
  98i,6n,129p,482b,338s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -1635,7 +1635,7 @@ Here is how much of LuaTeX's memory you used:
 C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/public/kpfonts/jkp
 bn8a.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/public/k
 pfonts/jkpmn8a.pfb>
-Output written on main.pdf (1 page, 32097 bytes).
+Output written on main.pdf (1 page, 31736 bytes).
 
 PDF statistics: 68 PDF objects out of 1000 (max. 8388607)
  10 named destinations out of 1000 (max. 131072)

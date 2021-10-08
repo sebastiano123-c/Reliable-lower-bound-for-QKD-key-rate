@@ -174,579 +174,211 @@
 #---------------------------------------------------------------------
 
 import numpy as np
-from scipy.linalg import logm#, sqrtm
-import cvxpy as cp
-from cvxopt import matrix, solvers
-from mosek.fusion import *
+from scipy.linalg import sqrtm
+from src import qkd
 import matplotlib.pyplot as plt
 import time
 
-# CONSTANTS
-# parameters
-d_a = 4
-d_b = 2
-epsilon = 1e-10
-start, stop, step = 0., .3, 10
-maxit = 20
-finesse = 10
-Pz = 0.5
-Prob = [Pz/2, Pz/2, (1. - Pz)/2, (1. - Pz)/2]
-solver_name = "MOSEK"
-solver_verbosity = False
+start_time = time.time()
 
-# define ids
+# parameters
+da = 4
+db = 2
+dtot = da*db
+nst = 4
+epsilon = 1e-10
+Pz = 0.5
+start, stop, step = 0., 0.12, 3
+maxit = 1000
+finesse = 5
+solver_name = "MOSEK"
+
+# define states
+states = [qkd.zero, qkd.one, qkd.plus, qkd.minus]
+basis = np.eye(da)
+
+# ALICE probabilities
+Px = (1. - Pz)
+ProbAlice = [Pz, Pz/2., Px/2., Px/2.]
+if (np.sum(ProbAlice) != 1): print("ProbAlice != 1")
+
+# BOB porbabilities
+BS = [0.7, 0.3] # beamsplitter
+ProbBob = [BS[0]/2., BS[0]/2., BS[1]/2., BS[1]/2.]
+if (np.sum(ProbBob) != 1): print("ProbBob != 1")
+
+#  post selection and probability of passing the post selection process
+postselect_prob = [Pz*BS[0], Px*BS[1]]
+ppass = sum(postselect_prob)
+
+# local measurments (|0><0|, |1><1|, |+><+| and |-><-|)
+sigma_00 = np.outer( states[0], np.conj(states[0]) )
+sigma_11 = np.outer( states[1], np.conj(states[1]) )
+sigma_pp = np.outer( states[2], np.conj(states[2]) )
+sigma_mm = np.outer( states[3], np.conj(states[3]) )
+
+# define identities for convinience
+id_a = np.eye(da)
+id_b = np.eye(db)
+id_tot = np.eye(dtot)
 id_2 = np.eye(2)
 id_4 = np.eye(4)
 id_8 = np.eye(8)
 id_64 = np.eye(64)
 id_128 = np.eye(128)
 
-# pauli matrices
-pauli = [[[1,0],[0,1]], [[0,1],[1,0]], [[0,-1j],[1j,0]], [[1,0],[0,-1]]]
-
-# define qubits 
-zero = np.array([1,0])
-one = np.array([0,1])
-states = [zero, one, (zero+one)/np.sqrt(2.), (zero-one)/np.sqrt(2.)]
-basis = [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]
-
-# alice measurments
-sigma_00 = np.outer(basis[0], np.conj(basis[0]))
-sigma_11 = np.outer(basis[1], np.conj(basis[1]))
-sigma_pp = np.outer(basis[2], np.conj(basis[2]))
-sigma_mm = np.outer(basis[3], np.conj(basis[3]))
-
-# bob measurments
-tau_00 = np.outer(states[0], np.conj(states[0]))
-tau_11 = np.outer(states[1], np.conj(states[1]))
-tau_pp = np.outer(states[2], np.conj(states[2]))
-tau_mm = np.outer(states[3], np.conj(states[3]))
-
-# FUNCTIONS
-def complex_to_real_isometrym(mat):
-    re = np.real(mat)
-    im = np.imag(mat)
-    return 1/2 * np.block( [[re, -im], [im, re]] )
-
-def inv_complex_to_real_isometrym(mat):
-    dims = [len(ii) for ii in mat]
-    dim = dims[0]
-    sep = int(dim/2)
-    re = mat[:sep, :sep]
-    im = mat[sep:, :sep]
-    return 2 * (re + 1j* im)
-
-def gram_schmidtm(V):
-    """Orthogonalize a set of matrices stored as elements of V(:,:,:)."""
-    n, k, l = np.shape(V)
-    U = np.zeros((n, k, l))*1j
-    U[0] = V[0] / np.trace(np.conj(V[0]).T @ V[0])
-    for ii in range(1, n): # remember the Hilbert-schmidt norm of two operators A, B is NORM = Tr[ A @ B ]
-        U[ii] = V[ii]
-        for jj in range(0, ii-1):
-            U[ii] = U[ii] - (np.trace( np.conj(U[jj]).T @ U[ii]) / np.trace( np.conj(U[jj]).T @ U[jj] ) ) * U[jj]
-        if( abs(np.trace( np.conj(U[ii]).T @ U[ii] )) <= 1e-8 ):
-            print( "gram_schmidtm:: stopped at ", ii, ". 'norm == inf'" )
-            U = np.delete(U, [kk for kk in range(ii,n)], axis=0)
-    return U
-
-def extend_basism(V, B):
-    """Extend a set of j.leq.k orthogonal matrices and k.leq.m orthonormal matrices to basis of the space H^m.
-        ---------------------------------------------
-        Keyword arguments:
-        V -- the new set of matrices (size (j, n, n) )
-        B -- the orthonormal set to be extended (size (k, n, n))
-        return C = (B,V^{orth})
-    """
-    C = B
-    for ii in range(np.shape(V)[0]): # remember the Hilbert-schmidt norm of two operators A, B is NORM = Tr[ A @ B ]
-        U = V[ii]
-        for jj in C:
-            U = U - (np.trace( np.conj(jj).T @ U) / np.trace( np.conj(jj).T @ jj ) ) * jj
-        if( abs(np.trace( np.conj(U).T @ U )) >= 1e-8 ):
-            C = np.append(C, [U], axis=0)
-    return C
-
-def relative_entropy(rho, sigma):
-    # avlr = np.real(np.linalg.eigvals(rho))
-    # avls = np.real(np.linalg.eigvals(sigma))
-    # res = 0.
-    # for ii in range(len(avlr)):
-    #     if(abs(avlr[ii]) >= 1e-10):
-    #         if(abs(avls[ii]) <= 1e-10):#if q_i is zero --> -p_i log(0) = +inf
-    #             res = + np.inf
-    #         else:                   # sum_i p_i log(p_i/q_i)
-    #             res = res + avlr[ii] * np.log(avlr[ii]/avls[ii])
-    #     #if(res < 0): print("relative_entropy:: is negative.")
-    res = np.trace(rho @ (logm(rho) - logm(sigma)))
-    return res/np.log(2)
-
-def vonneumann_entropy(rho):
-    return -np.trace( rho @ logm(rho) )
-
-def partial_trace(rho, qubit_2_keep):
-    """ Calculate the partial trace for qubit system
-    Parameters
-    ----------
-    rho: np.ndarray
-        Density matrix
-    qubit_2_keep: list
-        Index of qubit to be kept after taking the trace (NB: start from 0!)
-    Returns
-    -------
-    rho_res: np.ndarray
-        Density matrix after taking partial trace
-    """
-    num_qubit = int(np.log2(rho.shape[0]))
-    qubit_axis = [(i, num_qubit + i) for i in range(num_qubit)
-                  if i not in qubit_2_keep]
-    minus_factor = [(i, 2 * i) for i in range(len(qubit_axis))]
-    minus_qubit_axis = [(q[0] - m[0], q[1] - m[1])
-                        for q, m in zip(qubit_axis, minus_factor)]
-    rho_res = np.reshape(rho, [2, 2] * num_qubit)
-    qubit_left = num_qubit - len(qubit_axis)
-    for i, j in minus_qubit_axis:
-        rho_res = np.trace(rho_res, axis1=i, axis2=j)
-    if qubit_left > 1:
-        rho_res = np.reshape(rho_res, [2 ** qubit_left] * 2)
-    return rho_res
-
-def binary_entropy(p):
-    if p==0: return 0
-    elif p==1: return 0
-    else: return - p*np.log(p)/np.log(2) - (1-p)*np.log(1-p)/np.log(2)
-
-def sdp_solver(d, rho, grad_f, Gam, gam, solver_name='MOSEK', solver_verbosity=False):
-
-    # minimize: X.T @ Grad_f
-    X = cp.Variable((d, d), complex=True)
-
-    # subject to:
-    constraints = [] # The operator >> denotes matrix inequality.
-    constraints = constraints + [ X + rho >> 0 ] # Pos(H_AB)
-    constraints = constraints + [ cp.real(cp.trace( X + rho )) == 1. ] # trace sum up to 1
-    constraints = constraints + [ X + rho == cp.conj(X + rho).T ] # is a Hermitian
-    for ii, elm in enumerate(Gam):
-        constraints = constraints + [ cp.trace( (X + rho) @ elm)  == gam[ii]]
-
-    # solve
-    obj = cp.Minimize( cp.real(cp.trace( X.T @  grad_f )) )      
-    prob = cp.Problem( obj, constraints )
-    try:
-        prob.solve(solver=solver_name, verbose=solver_verbosity)
-    except:
-        print("\n",solver_name + " failed.")
-        return np.eye(d)
-
-    # check if there is any problem in the minimization procedure
-    if prob.status in ["infeasible", "unbounded"]:# Otherwise, prob.value is inf or -inf, respectively.
-        print("Status problem: %s" % prob.status)
-        exit()
-    
-    # solution
-    sol = X.value
-
-    # clear variables
-    del X, prob, obj, constraints
-
-    return sol
-
-def compute_primal(rho_0, ZA, Gamma, gamma, epsilon = 1e-10, maxit = 20, finesse = 10, solver_name = 'MOSEK', solver_verbosity = False):
-
-    # set 
-    counter = 1
-
-    # start algorithm
-    while(counter <= maxit):
-        d = np.shape(rho_0)[0]
-        ZrhoZ = sum( [ ii @ rho_0 @ ii for ii in ZA ] )
-        ZrhoZ = ZrhoZ / np.trace(ZrhoZ)
-        if( np.abs( np.trace(ZrhoZ) - 1. ) >= 1e-8): print("Tr[ZrhoZ] != 1", np.trace(ZrhoZ))
-        if( np.allclose( np.conj(ZrhoZ).T, ZrhoZ) == False ): print("ZrhoZ NOT hermitian", ZrhoZ)
-        if( np.all( np.linalg.eigvals(ZrhoZ) < - 1e-8)): print("ZrhoZ is NEGATIVE")
-
-        # gradient
-        bb84_frho = np.real(relative_entropy( rho_0, ZrhoZ ))
-        bb84_grad = (logm(rho_0) + logm(ZrhoZ)).T/np.sqrt(2)
-        print("iteration", counter, " f(rho) =", bb84_frho)
-
-        Delta_rho_0 = sdp_solver(d, rho_0, bb84_grad, Gamma, gamma, solver_name, solver_verbosity)
-
-        if(abs( np.trace( Delta_rho_0.T @ bb84_grad)) <= epsilon):
-            print("Algorithm exited at:", counter, "step")
-            break
-        elif (counter == maxit):
-            print("algorithm reached maxit =", maxit)
-            break
-
-        # find l\in (0,1) s.t. min f(rho_i + l* delta_rho)
-        tt = 0.
-        f_1 = bb84_frho
-        for ii in np.linspace(0., 1., finesse):
-            rho_temp = rho_0 + Delta_rho_0 * ii
-            ZrhoZ = sum( [ ii @ rho_temp @ ii for ii in ZA] )
-            ZrhoZ = ZrhoZ / np.trace(ZrhoZ)
-            f_2 = np.real(relative_entropy(rho_temp, ZrhoZ))
-            if (f_2 < f_1):
-                tt = ii
-                f_1 = f_2
-
-        # if f_1 == f_rho the next step will be the same
-        if(abs(f_1-bb84_frho) <= 1e-8): break
-
-        # assign rho_{i+1} for the next iteration
-        rho_0 = rho_0 + Delta_rho_0 * tt
-        counter = counter + 1
-
-    return bb84_frho, bb84_grad
-
-def compute_dual(f_rho, grad_f, Gamma, gamma, solver_name = 'MOSEK'):
-    # maximize: y.gamma
-    n = len(gamma)
-    Y = cp.Variable(n)
-    # subject to: positivity and tr == 1
-    dual_constraints = [ cp.real( sum( [Y[ii]*Gamma[ii].T for ii in range(n)] ) - grad_f ) << 0. ] # The operator >> denotes matrix inequality.
-    dual_obj = cp.Maximize( cp.real( gamma @ Y ) )
-    dual_prob = cp.Problem( dual_obj, dual_constraints)
-    dual_prob.solve(solver=solver_name)
-    if dual_prob.status in ["infeasible", "unbounded"]:
-        # Otherwise, prob.value is inf or -inf, respectively.
-        print("Status problem: %s" % dual_prob.status)
-    step2_bound = np.real( f_rho - np.trace( rho_0 @ grad_f ) + dual_prob.value)
-
-    return step2_bound
-
-# MAIN
-start_time = time.time()
-
-# total dimension
-d_tot = d_a * d_b
-
-# probabilities
-if (np.sum(Prob) != 1):
-    print("Prob != 1")
-
-# Alice POVM
-POVMA = [ np.outer(basis[0],np.conj(basis[0])),
-          np.outer(basis[1],np.conj(basis[1])),
-          np.outer(basis[2],np.conj(basis[2])),
-          np.outer(basis[3],np.conj(basis[3]))
+# After the qubit sending, Alice can measure A using the POVM
+POVMA = [
+    np.outer( basis[0], np.conj(basis[0]) ),
+    np.outer( basis[1], np.conj(basis[1]) ),
+    np.outer( basis[2], np.conj(basis[2]) ),
+    np.outer( basis[3], np.conj(basis[3]) )
 ]
 # which have dimension 4-by-4 and satisfy POVM properties
-if( np.allclose( sum([ np.conj(ii).T @ ii for ii in POVMA]), id_4 ) == False): print("sum POVMA**+ POVMA != 1", sum([ np.real(np.conj(ii).T @ ii) for ii in POVMA]) )
+if ( np.allclose(sum([ ii for ii in POVMA]), id_a ) == False ): print("sum POVMA**+ POVMA != 1", sum([ ii for ii in POVMA]) )
 for ii in POVMA:
     if(np.allclose( np.conj(ii).T, ii) == False ): print("POVMA NOT hermitian")
     if(np.all( np.linalg.eigvals(ii) < -1e-8)): print("POVMA is NEGATIVE")
 
-# Bob POVM
-POVMB = [ 1/np.sqrt(2)*np.outer( states[0], np.conj(states[0]) ),
-          1/np.sqrt(2)*np.outer( states[1], np.conj(states[1]) ),
-          1/np.sqrt(2)*np.outer( states[2], np.conj(states[2]) ),
-          1/np.sqrt(2)*np.outer( states[3], np.conj(states[3]) )
+# On the other hand, Bob can measure using the POVM
+POVMB = [
+    0.5*sigma_00,
+    0.5*sigma_11,
+    0.5*sigma_pp,
+    0.5*sigma_mm
 ]
 # which have dimension 2-by-2 and satisfy POVM properties
-if ( np.allclose(np.real(sum([ np.conj(ii).T @ ii for ii in POVMB])), id_2 ) == False): print("sum POVMB**+ POVMB != 1", sum([ np.conj(ii).T @ ii for ii in POVMB]) )
+if ( np.allclose(sum([ii for ii in POVMB]), id_b ) == False ): print("sum POVMB**+ POVMB != 1", sum([ ii for ii in POVMB]) )
 for ii in POVMB:
     if(np.allclose( np.conj(ii).T, ii) == False ): print("POVMB NOT hermitian")
     if(np.all( np.linalg.eigvals(ii) < - 1e-8)): print("POVMB is NEGATIVE")
 
-# The POVM of the entire system
+# The POVM of the entire system is given by
 POVM = []
 for ii in POVMA:
         for jj in POVMB:
             temp = np.kron( ii, jj )
             POVM.append( temp )
 # which have dimension 8-by-8 and satisfy POVM properties
-if ( np.allclose(sum([ np.conj(ii).T @ ii for ii in POVM]), id_8 ) == False): print("sum POVM**+ POVM != 1", sum([np.real(np.conj(ii).T @ ii) for ii in POVM]))
+if ( np.all(sum([ np.conj(ii).T @ ii for ii in POVM]) != id_tot ) ): print("sum POVM**+ POVM != 1",[np.conj(ii).T @ ii for ii in POVM])
 for ii in POVM:
     if(np.allclose( np.conj(ii).T, ii) == False ): print("POVM NOT hermitian")
     if(np.all( np.linalg.eigvals(ii) < - 1e-8)): print("POVM is NEGATIVE")
 
-# Theta.o.I_B 
-Theta = []
-for ii in pauli:
-    for jj in pauli:
-        Theta.append( np.kron( ii, np.kron( jj, id_2 ) ) )
+# PUBLIC ANNOUNCEMENT:
+#   kraus operators of A dim = 16-by-4
+KA = [ np.kron( sqrtm(POVMA[0]), np.kron(qkd.zero[:, np.newaxis], qkd.zero[:, np.newaxis])) +
+       np.kron( sqrtm(POVMA[1]), np.kron(qkd.zero[:, np.newaxis], qkd.one[:, np.newaxis])),
+       np.kron( sqrtm(POVMA[2]), np.kron(qkd.one[:, np.newaxis] , qkd.zero[:, np.newaxis])) +
+       np.kron( sqrtm(POVMA[3]), np.kron(qkd.one[:, np.newaxis] , qkd.one[:, np.newaxis]))
+]
+#   which satisfy Kraus property
+if ( np.allclose( np.sum([ np.conj(ii).T @ ii for ii in KA]), id_a) ): print("sum KA**+ KA != 1", sum([ np.conj(ii).T @ ii for ii in KA]) )
+#   kraus operators of B dim = 8-by-4
+KB = [ np.kron(sqrtm(POVMB[0]), np.kron(qkd.zero[:, np.newaxis], qkd.zero[:, np.newaxis])) +
+       np.kron(sqrtm(POVMB[1]), np.kron(qkd.zero[:, np.newaxis], qkd.one[:, np.newaxis])),
+       np.kron(sqrtm(POVMB[2]), np.kron(qkd.one[:, np.newaxis] , qkd.zero[:, np.newaxis])) +
+       np.kron(sqrtm(POVMB[3]), np.kron(qkd.one[:, np.newaxis] , qkd.one[:, np.newaxis]))
+]
+#   which satisfy Kraus property
+if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in KB]), id_b ) ): print("sum KB**+ KB != 1", sum([ np.conj(ii).T @ ii for ii in KB]) )
+#   The total Kraus representation of the Public Announcement is
+K = []
+for ii in KA:
+        for jj in KB:
+            K.append( np.kron(ii, jj))
+#   which satisfy Kraus property
+if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in K]), id_tot ) ): print("sum K**+ K != 1", sum([ np.conj(ii).T @ ii for ii in K]) )
 
-# Omega_j complete set of variables
+# SIFTING PHASE:
+#   acts like a projector with dimension 128-by-128
+proj = np.kron( id_a, np.kron( sigma_00, np.kron( np.kron(id_2, id_b), np.kron( sigma_00, id_2 ))) ) +\
+       np.kron( id_a, np.kron( sigma_11, np.kron( np.kron(id_2, id_b), np.kron( sigma_11, id_2 ))) )
+
+# KEY MAP:
+#   is a isometry which creates a new register R which stores the information on the bits
+#   and it is a 258-by-258 matrix
+V = np.kron( qkd.zero[:, np.newaxis], np.kron( np.kron(id_a, id_2), np.kron( sigma_00, np.kron(id_b, id_4)) )) +\
+    np.kron( qkd.one[:, np.newaxis] , np.kron( np.kron(id_a, id_2), np.kron( sigma_11, np.kron(id_b, id_4)) ))
+
+# PINCHING CHANNEL:
+#   decohere the register R. It has the effect of making R a classical register
+pinching = [ np.kron( sigma_00 , np.kron( np.kron(id_a, np.kron( id_4, id_b )), id_4 )),
+             np.kron( sigma_11 , np.kron( np.kron(id_a, np.kron( id_4, id_b )), id_4 )) ]
+
+# this set is used to extend POVM_tilde to a basis
 Omega = []
-for ii in pauli:
-    for jj in pauli:
-        for kk in pauli:
-            Omega.append( np.kron( ii, np.kron( jj, kk ) ) )
+Omega_ab = []
+for ii in range(4):
+    for jj in range(4):
+        M = 0.5 * np.kron(qkd.pauli[ii], qkd.pauli[jj])
+        #check for hermiticity
+        if(np.allclose(M, np.conj(M).T) == False): print("Gamma", ii, jj, "not hermitian.")
+        #check if is a Tr[G_mu G_mu]==1
+        if( abs(np.trace(M @ M) - 1.) >= 1e-8): print("Tr[G_mu G_mu] != 1", np.trace(M @ M))
+        Omega.append( M )
+        for kk in range(4):
+            Omega_ab.append( np.kron(M,qkd.pauli[kk]) )
 
-# define a complete orthonormal set of operators
-Gammat = gram_schmidtm(POVM)
-Gammat = extend_basism(Gammat, Theta)
-kk = np.shape(Gammat)[0]
-Gammat = gram_schmidtm(Gammat)
-orthbasis = extend_basism(Gammat, Omega)
-jj = np.shape(orthbasis)[0]
-Omega = orthbasis[kk:]
+# new simulation
+sim = qkd.QKD(4, 2 ,4, basis, ProbAlice, states, ProbBob)
+sim.set_povm(POVM)
+sim.set_public_string_announcement(K)
+sim.set_sifting_phase_postselection(proj)
+sim.set_key_map(V)
+sim.set_pinching_channel(pinching)
+sim.set_operator_basis_a(Omega)
+sim.set_operator_basis_ab(Omega_ab)
+sim.get_full_hermitian_operator_basis()
 
-# possible outcome measurments
-ZA = np.zeros((2, 8, 8))*1j
-ZA[0] = np.kron(np.outer(basis[0], np.conj(basis[0])) + np.outer(basis[2], np.conj(basis[2])), id_2) #( |0><0| + |+><+| ) .o. id_2 --> bit 0
-ZA[1] = np.kron(np.outer(basis[1], np.conj(basis[1])) + np.outer(basis[3], np.conj(basis[3])), id_2) #( |1><1| + |-><-| ) .o. id_2 --> bit 1
+qber = np.linspace(start, stop, step)
 
-# which have dimension 4-by-4 and satisfy POVM properties
-if(np.allclose(sum([ np.conj(ii).T @ ii for ii in ZA]), id_8) == False): print("sum ZA**+ ZA != 1", sum([ np.real(np.conj(ii).T @ ii) for ii in ZA]) )
-for ii in ZA:
-    if(np.allclose( np.conj(ii).T, ii) == False ): print("ZA NOT hermitian")
-    if(np.all( np.linalg.eigvals(ii) < -1e-8)): print("ZA is NEGATIVE")
+key_th      = []
+key_primal  = []
+key_dual    = []
 
-postselect_prob = np.array([Pz/2, (1-Pz)/2])  # assume they choose pz=px=1/2
-Ez = np.kron(sigma_00, tau_11) + np.kron(sigma_11, tau_00)
-Ex = np.kron(sigma_pp, tau_mm) + np.kron(sigma_mm, tau_pp)
-Gamma = [Ez, Ex]
-Gamma = [G*p for G, p in zip(Gamma, postselect_prob)]
+# numerical
+for ii in qber:
+    print("\n QBER =", ii)
 
-# orthogonal basis
-Omega = []
-for ii in pauli:
-    for jj in pauli:
-        for kk in pauli:
-            Omega.append(np.kron(ii, np.kron(jj, kk)))
-Gammat = gram_schmidtm(Gamma)
-kk = np.shape(Gammat)[0]
+    # theorical
+    hp = qkd.binary_entropy(ii)
 
-print(np.shape(Gamma))
-print(np.shape(Omega))
-orth_normal_basis = extend_basism(Gammat, Omega)
-Omega = orth_normal_basis[kk:]
+    # apply quantum channel
+    sim.apply_quantum_channel(qkd.depolarizing_channel(2*ii))
 
-# define the state psi_AA'
-psi_aa = 0.
-for ii in range(d_a):
-    psi_aa = psi_aa + np.sqrt(Prob[ii])*np.kron(basis[ii], states[ii] )
-if(np.sqrt(psi_aa @ np.conj(psi_aa))-1. >= 1e-8): print("||psi_aa|| ==", np.sqrt(psi_aa @ np.conj(psi_aa)))
+    # set constraints
+    gamma = []
+    for jj in sim.orth_set_a:
+        gamma.append(np.trace( jj @ sim.rho_ab))
+    for jj in sim.povm:
+        gamma.append(np.trace( jj @ sim.rho_ab))
+    sim.set_constraints(gamma, np.concatenate([sim.orth_set_a, sim.povm]))
 
-# define rho_aa and check if it is physical
-rho_aa = np.outer( psi_aa, np.conj(psi_aa) )
-if( np.abs( np.trace(rho_aa) - 1.) >= 1e-8): print("Tr[rho_aa] != 1 (", np.trace(rho_aa),")")
-if( np.allclose( np.conj(rho_aa).T, rho_aa) == False ): print("rho_aa NOT hermitian")
-if( np.all( np.linalg.eigvals(rho_aa) < - 1e-8)): print("rho_aa is NEGATIVE")
+    # compute primal and dual problem
+    sim.compute_primal(epsilon, maxit, finesse)
+    sim.compute_dual(solver_name="MOSEK")
 
-# Alice keeps A and send A' which is subjected to the quantum channel
-# action, such as the depolarization.
-# Here is the check for polarization probabilities going from 0 to 1.
-depolarization_probability, simple_step1_bounds, simple_step2_bounds, theoric_bounds = [], [], [], []
-for uu in np.linspace(start, stop, step):
-    # constructing the 2-by-2 polarization operator
-    depo = [ np.sqrt(1-3./4.*uu)*np.array( pauli[0] ),
-                 np.sqrt(uu/4.)*np.array( pauli[1] ),
-                 np.sqrt(uu/4.)*np.array( pauli[2] ),
-                 np.sqrt(uu/4.)*np.array( pauli[3] )
-    ]
-    if(np.allclose( sum([np.conj(ii).T @ ii for ii in depo]), id_2 ) == False): print("depo is not Kraus")
-    
-    # depolarization = id_4.o.depo
-    rho_ab, sumkt = 0., 0.
-    for jj in depo:
-        kraus_temp = np.kron( id_4, jj)
-        rho_ab = rho_ab + kraus_temp @ rho_aa @ np.conj( kraus_temp ).T
-        sumkt = sumkt + np.conj( kraus_temp ).T @ kraus_temp
-    # check the depolarization satisfy Kraus representation property
-    if( np.allclose( sumkt, id_8) == False): print("Depo4 is not kraus.")
-    # normalize
-    rho_ab = rho_ab / np.trace(rho_ab)
-    # check
-    if( np.abs( np.trace(rho_ab) - 1.) >= 1e-8): print("Tr[rho_ab] != 1", np.trace(rho_ab))
-    if( np.allclose( np.conj(rho_ab).T, rho_ab) == False): print("rho_ab NOT hermitian")
-    if( np.all( np.linalg.eigvals(rho_ab) < - 1e-8) ): print("rho_ab is NEGATIVE")
+    key_th.append(1 - 2*hp)
+    key_primal.append( sim.primal_sol - hp)
+    key_dual.append( sim.dual_sol - hp)
 
-    # purity
-    purity = np.real(np.trace( rho_ab @ rho_ab ))
-    print("- - - - - - - - - - - - -")
-    print("(depolarization prob.=", uu,". purity of rho_0     =", purity, ")")
+    print("--- --- --- --- --- --- --- --- ---")
+    print(" step 1 =", sim.primal_sol)
+    print(" step 2 =", sim.dual_sol)
 
-# SDP PROBLEM
-    # definitions
-    counter = 1   # 1) set counter to 0
-    rho_0 = 0.    # 2) find rho_0
-    for ii in orth_normal_basis:
-        rho_0 = rho_0 + np.trace(rho_aa @ ii) * ii
-    rho_0 = rho_0 / np.real(np.trace(rho_0))
+print( "\n CPU time: ", time.time() - start_time, "s")
 
-    # for ii in Gammat:
-    #     rho_0 = rho_0 + np.trace(rho_ab @ ii) * ii
-    # for ii in Omega:
-    #     rho_0 = rho_0 + np.trace(rho_ab @ ii) * ii
-    # # normalize
-    # rho_0 = rho_0 / np.trace( rho_0 )
-    
-    # rho_0 = rho_ab
-
-    # #constraints
-    # # povm constraints
-    # p_j, p_tilde, theta_j, omega_j, gamma_tilde = [], [], [], [], []
-    # for ii in POVM:
-    #     tmp = np.trace( ii @ rho_ab )
-    #     if( abs(np.imag(tmp)) >= 1e-10 ): print("ERROR: complex mean value")
-    #     p_j.append( tmp )
-    # for ii in Theta:
-    #     tmp = np.trace( ii @ rho_ab )
-    #     if( abs(np.imag(tmp)) >= 1e-10 ): print("ERROR: complex mean value")
-    #     theta_j.append( tmp )
-
-    #gamma , Gamma
-    # gam, Gam = np.concatenate((p_j, theta_j)),  np.concatenate((POVM, Theta))
-    gamma = np.array([uu, uu]) * postselect_prob
-
-    # check rho_0 is physical
-    if( np.abs( np.trace(rho_0) - 1. ) >= 1e-8): print("Tr[rho_0] != 1", np.trace(rho_0))
-    if( np.allclose( np.conj(rho_0).T, rho_0) == False ): print("rho_0 NOT hermitian", rho_0)
-    if( np.all( np.linalg.eigvals(rho_0) < - 1e-8)): print("rho_0 is NEGATIVE")
-
-#  STEP 1
-    # step 1 result
-    bb84_frho, bb84_grad = compute_primal(rho_0, ZA, Gamma, gamma, epsilon, maxit, finesse, 'CVXOPT', False)
-
-    # store result
-    step1_bound = np.real( bb84_frho ) 
-    print("Step 1 result is    = ", step1_bound)
-    simple_step1_bounds.append(step1_bound)
-
-#  STEP 2
-    # step 2 result
-    step2_bound = compute_dual(bb84_frho, bb84_grad, Gamma, gamma, 'MOSEK')
-
-    #store result
-    print("Step 1 result is    = ", step2_bound)
-    simple_step2_bounds.append(step2_bound)
-
-    # and theoretic values
-    depolarization_probability.append(uu)
-    thrc = 1 - 2*binary_entropy(uu/2)
-    if thrc <= 0: thrc = 0.
-    theoric_bounds.append(thrc)
-
-print(" --- ", time.time() - start_time, "s --- ")
-
-# plot
-plt.plot(depolarization_probability, simple_step1_bounds, "-.", label="simple bb84 step 1")
-# plt.plot(depolarization_probability, simple_step2_bounds, "--", label="simple bb84 step 2")
-plt.plot(depolarization_probability, theoric_bounds, "--", label="BB84 th.")
-plt.title(" BB84 simulation ")
-plt.xlabel("depolarization probability")
-plt.ylabel(r'$f(\rho_{AB})$')
+fig, ax = plt.subplots(figsize=(20, 11))
+ax.plot(qber, key_th, "--", linewidth=1.2, alpha=0.5, label="theorical")
+ax.plot(qber, key_primal, "o", alpha=0.5, label="step 1")
+ax.plot(qber, key_dual, ".", alpha=0.5, label="step 2")
+plt.xlabel("QBER")
+plt.ylabel("Secret key rate")
+plt.title("Reliable lower bound P&M BB84 with public announcement and sifting")
+plt.ylim([0., None])
+plt.xlim([0., None])
 plt.legend(loc='best')
-plt.grid(True)
+plt.grid()
+plt.savefig("analysis/test_"+str(100*Pz)+".png")
 plt.show()
-
-
-
-# minimize: X.T @ Grad_f
-        # re_r = np.real(rho_0)
-        # im_r = np.imag(rho_0)
-        # rho_cmplx = complex_to_real_isometrym(rho_0)
-        # m = d_tot
-        # X = cp.Variable((2*m, 2*m))
-        # # subject to:
-        # constraints = [] # The operator >> denotes matrix inequality.
-        # constraints = constraints + [ X + rho_cmplx >> 0 ] # Pos(H_AB)
-        # constraints = constraints + [ cp.real(cp.trace( X + rho_cmplx )) == 2.] # trace sum up to 1
-        # # constraints = constraints + [ X + rho_cmplx == cp.conj(X + rho_cmplx).T] # is a Hermitian
-        # for ii, elm in enumerate(Gam):
-        #     constraints = constraints + [ cp.trace( (X + rho_cmplx) @ complex_to_real_isometrym(elm) ) == gam[ii]]
-
-        # # solve
-        # obj = cp.Minimize( cp.trace( X.T @  complex_to_real_isometrym(bb84_grad) ) )      
-        # prob = cp.Problem( obj, constraints )
-        # prob.solve(solver=solver_name, verbose=solver_verbosity)
-        # # check if there is any problem in the minimization procedure
-        # if prob.status in ["infeasible", "unbounded"]:# Otherwise, prob.value is inf or -inf, respectively.
-        #     print("Status problem: %s" % prob.status)
-        #     break
-        # # the solution X is X.value
-        # Delta_rho_0 = inv_complex_to_real_isometrym(X.value)
-        
-
-        
-# def sdp_solver1(d, rho, grad_f, Gamma, gamma, model_name="CMPLX_SDP"):#using mosek library
-#     with Model(model_name) as M:
-        
-#         # Setting up the variables
-#         X = M.variable("X", Domain.inPSDCone(2*d))
-
-#         # Setting up constant coefficient matrices
-#         C  = Matrix.dense ( complex_to_real_isometrym( grad_f ) )
-
-#         # Objective
-#         M.objective(ObjectiveSense.Minimize, Expr.dot(C, X))
-
-#         # Constraints
-#         rho = complex_to_real_isometrym(rho)
-#         for ii, val in enumerate(Gamma):
-#             M.constraint("c"+str(ii+1), Expr.sum( Expr.mulElm( Expr.add(X, rho), complex_to_real_isometrym(val) ) ), Domain.equalsTo(np.real(gamma[ii])))
-#         M.constraint("c0",  Expr.sum( Expr.mulElm( Expr.add(X, rho), np.eye(2*d) ) ), Domain.equalsTo(1))
-
-#         # solve
-#         M.solve()
-
-#         print(X.level())
-
-
-# def sdp_solver(d, rho, grad_f, Gam, gam, solver_name='MOSEK', solver_verbosity=False):
-
-#     # minimize: X.T @ Grad_f
-#     rho_dbl = complex_to_real_isometrym(rho)
-#     X = cp.Variable((2*d, 2*d))
-
-#     # subject to:
-#     constraints = [] # The operator >> denotes matrix inequality.
-#     constraints = constraints + [ X + rho_dbl >> 0 ] # Pos(H_AB)
-#     constraints = constraints + [ cp.trace( X + rho_dbl ) == 1.] # trace sum up to 1
-#     # constraints = constraints + [ X + rho_dbl == cp.conj(X + rho_dbl).T] # is a Hermitian
-#     for ii, elm in enumerate(Gam):
-#         constraints = constraints + [ cp.trace( (X + rho_dbl) @ complex_to_real_isometrym(elm) ) == gam[ii]]
-
-#     # solve
-#     obj = cp.Minimize( cp.trace( X.T @  complex_to_real_isometrym(grad_f) ) )      
-#     prob = cp.Problem( obj, constraints )
-#     prob.solve(solver=solver_name, verbose=solver_verbosity)
-
-#     # check if there is any problem in the minimization procedure
-#     if prob.status in ["infeasible", "unbounded"]:# Otherwise, prob.value is inf or -inf, respectively.
-#         print("Status problem: %s" % prob.status)
-#         exit()
-#     sol = X.value
-
-#     del X, prob, obj, constraints
-
-#     return inv_complex_to_real_isometrym(sol)
-
-
-# def sdp_solver3(d_tot, rho, grad_f, Omega, Gam, gam):
-
-#     # minimize: C^T @ X = C_1 X_1 + C_2 X_2 + ...
-#     # define C as the sequence made of C = { Tr[Omega_1^T @ grad_f_j], Tr[Omega_2 @ grad_f_j], ... }
-#     m = np.shape(Omega)[0]
-#     c = [np.trace( ii.T @ grad_f ) for ii in Omega]
-#     re_c = np.real(c)
-#     im_c = np.imag(c)
-#     c = matrix( re_c ) # to convert ndarray to array use .tolist()
-#     # c = matrix( c, tc='z' )
-
-#     # subject to: sum_i X_i Omega_i >= - rho_i
-#     # G stores row-wise the matrices as rows
-#     G = []
-#     for mat in Omega:
-#         tmp = complex_to_real_isometrym(mat)
-#         G = np.append(G, tmp.reshape(-1))
-#     G = [matrix( G.tolist(), (int(len(G)/m), m), tc='d' )]
-#     # G = [matrix( G, tc= 'z' )]
-#     # define -rho_i
-#     h = complex_to_real_isometrym(rho)
-#     h = [ matrix( h.tolist(), (d_tot*2, d_tot*2), tc='d' ) ]
-#     # h = [matrix( -rho, tc='z' )]
-
-#     # solve
-#     sol = solvers.sdp(c, Gs=G, hs=h)
-    
-#     # construct Delta_rho
-#     Delta_rho = 0.
-#     for ii, val in enumerate(sol['x']):
-#         Delta_rho = Delta_rho + val * Omega[ii]
-    
-#     return Delta_rho
