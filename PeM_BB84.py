@@ -199,7 +199,7 @@ basis = np.eye(da)
 
 # ALICE probabilities
 Px = (1. - Pz)
-ProbAlice = [Pz, Pz/2., Px/2., Px/2.]
+ProbAlice = [Pz, Pz, Px, Px]
 if (np.sum(ProbAlice) != 1): print("ProbAlice != 1")
 
 # BOB porbabilities
@@ -211,125 +211,8 @@ if (np.sum(ProbBob) != 1): print("ProbBob != 1")
 postselect_prob = [Pz*BS[0], Px*BS[1]]
 ppass = sum(postselect_prob)
 
-# local measurments (|0><0|, |1><1|, |+><+| and |-><-|)
-sigma_00 = np.outer( states[0], np.conj(states[0]) )
-sigma_11 = np.outer( states[1], np.conj(states[1]) )
-sigma_pp = np.outer( states[2], np.conj(states[2]) )
-sigma_mm = np.outer( states[3], np.conj(states[3]) )
-
-# define identities for convinience
-id_a = np.eye(da)
-id_b = np.eye(db)
-id_tot = np.eye(dtot)
-id_2 = np.eye(2)
-id_4 = np.eye(4)
-id_8 = np.eye(8)
-id_64 = np.eye(64)
-id_128 = np.eye(128)
-
-# After the qubit sending, Alice can measure A using the POVM
-POVMA = [
-    np.outer( basis[0], np.conj(basis[0]) ),
-    np.outer( basis[1], np.conj(basis[1]) ),
-    np.outer( basis[2], np.conj(basis[2]) ),
-    np.outer( basis[3], np.conj(basis[3]) )
-]
-# which have dimension 4-by-4 and satisfy POVM properties
-if ( np.allclose(sum([ ii for ii in POVMA]), id_a ) == False ): print("sum POVMA**+ POVMA != 1", sum([ ii for ii in POVMA]) )
-for ii in POVMA:
-    if(np.allclose( np.conj(ii).T, ii) == False ): print("POVMA NOT hermitian")
-    if(np.all( np.linalg.eigvals(ii) < -1e-8)): print("POVMA is NEGATIVE")
-
-# On the other hand, Bob can measure using the POVM
-POVMB = [
-    0.5*sigma_00,
-    0.5*sigma_11,
-    0.5*sigma_pp,
-    0.5*sigma_mm
-]
-# which have dimension 2-by-2 and satisfy POVM properties
-if ( np.allclose(sum([ii for ii in POVMB]), id_b ) == False ): print("sum POVMB**+ POVMB != 1", sum([ ii for ii in POVMB]) )
-for ii in POVMB:
-    if(np.allclose( np.conj(ii).T, ii) == False ): print("POVMB NOT hermitian")
-    if(np.all( np.linalg.eigvals(ii) < - 1e-8)): print("POVMB is NEGATIVE")
-
-# The POVM of the entire system is given by
-POVM = []
-for ii in POVMA:
-        for jj in POVMB:
-            temp = np.kron( ii, jj )
-            POVM.append( temp )
-# which have dimension 8-by-8 and satisfy POVM properties
-if ( np.all(sum([ np.conj(ii).T @ ii for ii in POVM]) != id_tot ) ): print("sum POVM**+ POVM != 1",[np.conj(ii).T @ ii for ii in POVM])
-for ii in POVM:
-    if(np.allclose( np.conj(ii).T, ii) == False ): print("POVM NOT hermitian")
-    if(np.all( np.linalg.eigvals(ii) < - 1e-8)): print("POVM is NEGATIVE")
-
-# PUBLIC ANNOUNCEMENT:
-#   kraus operators of A dim = 16-by-4
-KA = [ np.kron( sqrtm(POVMA[0]), np.kron(qkd.zero[:, np.newaxis], qkd.zero[:, np.newaxis])) +
-       np.kron( sqrtm(POVMA[1]), np.kron(qkd.zero[:, np.newaxis], qkd.one[:, np.newaxis])),
-       np.kron( sqrtm(POVMA[2]), np.kron(qkd.one[:, np.newaxis] , qkd.zero[:, np.newaxis])) +
-       np.kron( sqrtm(POVMA[3]), np.kron(qkd.one[:, np.newaxis] , qkd.one[:, np.newaxis]))
-]
-#   which satisfy Kraus property
-if ( np.allclose( np.sum([ np.conj(ii).T @ ii for ii in KA]), id_a) ): print("sum KA**+ KA != 1", sum([ np.conj(ii).T @ ii for ii in KA]) )
-#   kraus operators of B dim = 8-by-4
-KB = [ np.kron(sqrtm(POVMB[0]), np.kron(qkd.zero[:, np.newaxis], qkd.zero[:, np.newaxis])) +
-       np.kron(sqrtm(POVMB[1]), np.kron(qkd.zero[:, np.newaxis], qkd.one[:, np.newaxis])),
-       np.kron(sqrtm(POVMB[2]), np.kron(qkd.one[:, np.newaxis] , qkd.zero[:, np.newaxis])) +
-       np.kron(sqrtm(POVMB[3]), np.kron(qkd.one[:, np.newaxis] , qkd.one[:, np.newaxis]))
-]
-#   which satisfy Kraus property
-if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in KB]), id_b ) ): print("sum KB**+ KB != 1", sum([ np.conj(ii).T @ ii for ii in KB]) )
-#   The total Kraus representation of the Public Announcement is
-K = []
-for ii in KA:
-        for jj in KB:
-            K.append( np.kron(ii, jj))
-#   which satisfy Kraus property
-if ( np.allclose(np.sum([ np.conj(ii).T @ ii for ii in K]), id_tot ) ): print("sum K**+ K != 1", sum([ np.conj(ii).T @ ii for ii in K]) )
-
-# SIFTING PHASE:
-#   acts like a projector with dimension 128-by-128
-proj = np.kron( id_a, np.kron( sigma_00, np.kron( np.kron(id_2, id_b), np.kron( sigma_00, id_2 ))) ) +\
-       np.kron( id_a, np.kron( sigma_11, np.kron( np.kron(id_2, id_b), np.kron( sigma_11, id_2 ))) )
-
-# KEY MAP:
-#   is a isometry which creates a new register R which stores the information on the bits
-#   and it is a 258-by-258 matrix
-V = np.kron( qkd.zero[:, np.newaxis], np.kron( np.kron(id_a, id_2), np.kron( sigma_00, np.kron(id_b, id_4)) )) +\
-    np.kron( qkd.one[:, np.newaxis] , np.kron( np.kron(id_a, id_2), np.kron( sigma_11, np.kron(id_b, id_4)) ))
-
-# PINCHING CHANNEL:
-#   decohere the register R. It has the effect of making R a classical register
-pinching = [ np.kron( sigma_00 , np.kron( np.kron(id_a, np.kron( id_4, id_b )), id_4 )),
-             np.kron( sigma_11 , np.kron( np.kron(id_a, np.kron( id_4, id_b )), id_4 )) ]
-
-# this set is used to extend POVM_tilde to a basis
-Omega = []
-Omega_ab = []
-for ii in range(4):
-    for jj in range(4):
-        M = 0.5 * np.kron(qkd.pauli[ii], qkd.pauli[jj])
-        #check for hermiticity
-        if(np.allclose(M, np.conj(M).T) == False): print("Gamma", ii, jj, "not hermitian.")
-        #check if is a Tr[G_mu G_mu]==1
-        if( abs(np.trace(M @ M) - 1.) >= 1e-8): print("Tr[G_mu G_mu] != 1", np.trace(M @ M))
-        Omega.append( M )
-        for kk in range(4):
-            Omega_ab.append( np.kron(M,qkd.pauli[kk]) )
-
 # new simulation
 sim = qkd.QKD(4, 2 ,4, basis, ProbAlice, states, ProbBob)
-sim.set_povm(POVM)
-sim.set_public_string_announcement(K)
-sim.set_sifting_phase_postselection(proj)
-sim.set_key_map(V)
-sim.set_pinching_channel(pinching)
-sim.set_operator_basis_a(Omega)
-sim.set_operator_basis_ab(Omega_ab)
-sim.get_full_hermitian_operator_basis()
 
 qber = np.linspace(start, stop, step)
 

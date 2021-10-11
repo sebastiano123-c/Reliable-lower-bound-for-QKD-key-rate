@@ -1,4 +1,4 @@
-This is LuaHBTeX, Version 1.14.0 (MiKTeX 21.7) (format=lualatex 2021.7.26)  1 OCT 2021 09:51
+This is LuaHBTeX, Version 1.14.0 (MiKTeX 21.7) (format=lualatex 2021.7.26)  11 OCT 2021 23:54
  restricted system commands enabled.
  file:line:error style messages enabled.
 **c:/Univ/Magistrale/Tesi/simulazione/main.tex
@@ -1394,9 +1394,53 @@ File: listings.cfg 2020/03/24 1.8d listings configuration
 ))
 Package: listings 2020/03/24 1.8d (Carsten Heinz)
 
-(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/listings/lstlang1.
-sty
-File: lstlang1.sty 2020/03/24 1.8d listings language file
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/natbib/natbib.sty
+Package: natbib 2010/09/13 8.31b (PWD, AO)
+\bibhang=\skip74
+\bibsep=\skip75
+LaTeX Info: Redefining \cite on input line 694.
+\c@NAT@ctr=\count332
+)
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/algorithms/algorit
+hm.sty
+Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating enviro
+nment
+
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count333
+\float@exts=\toks56
+\float@box=\box122
+\@float@everytoks=\toks57
+\@floatcapt=\box123
+)
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/base/ifthen.sty
+Package: ifthen 2020/11/24 v1.1c Standard LaTeX ifthen package (DPC)
+)
+\@float@every@algorithm=\toks58
+\c@algorithm=\count334
+)
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/algorithmicx/algps
+eudocode.sty
+Package: algpseudocode 
+
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/algorithmicx/algor
+ithmicx.sty
+Package: algorithmicx 2005/04/27 v1.2 Algorithmicx
+
+Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
+\c@ALG@line=\count335
+\c@ALG@rem=\count336
+\c@ALG@nested=\count337
+\ALG@tlm=\skip76
+\ALG@thistlm=\skip77
+\c@ALG@Lnr=\count338
+\c@ALG@blocknr=\count339
+\c@ALG@storecount=\count340
+\c@ALG@tmpcounter=\count341
+\ALG@tmplength=\skip78
+)
+Document Style - pseudocode environments for use with the `algorithmicx' style
 )
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/listings/lstlang1.
 sty
@@ -1406,109 +1450,104 @@ File: lstlang1.sty 2020/03/24 1.8d listings language file
 sty
 File: lstlang1.sty 2020/03/24 1.8d listings language file
 )
-\c@theorem=\count332
-\c@definition=\count333
-\c@remark=\count334
-
-
-Package amsthm Warning: Unknown theoremstyle `example' on input line 92.
-
-\c@example=\count335
-
-Package amsthm Warning: Unknown theoremstyle `corollary' on input line 94.
-
-\c@corollary=\count336
-
-Package amsthm Warning: Unknown theoremstyle `lemma' on input line 96.
-
-\c@lemma=\count337
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/listings/lstlang1.
+sty
+File: lstlang1.sty 2020/03/24 1.8d listings language file
+)
+\c@theorem=\count342
 LaTeX Font Info:    Trying to load font information for T1+jkp on input line 11
-0.
+6.
+
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/t1jkp.fd
 File: t1jkp.fd 2007/01/24 Fontinst v1.928 font definitions for T1/jkp.
 )
-
-LaTeX Warning: Unused global option(s):
-    [12].
-
 (./main.aux)
 \openout1 = main.aux
 
-LaTeX Font Info:    Checking defaults for OML/jkp/m/it on input line 110.
+LaTeX Font Info:    Checking defaults for OML/jkp/m/it on input line 116.
 LaTeX Font Info:    Trying to load font information for OML+jkp on input line 1
-10.
+16.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/omljkp.fd
 File: omljkp.fd 2006/08/15 v1.0
 )
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for OMS/jkp/m/n on input line 110.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for OMS/jkp/m/n on input line 116.
 LaTeX Font Info:    Trying to load font information for OMS+jkp on input line 1
-10.
+16.
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/omsjkp.fd
 File: omsjkp.fd 2006/08/15 v1.0
 )
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 110.
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 110.
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 110.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 116.
 LaTeX Font Info:    Trying to load font information for TS1+cmr on input line 1
-10.
+16.
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/base/ts1cmr.fd
 File: ts1cmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
 )
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 110.
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for OMX/jkp/m/n on input line 110.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for OMX/jkp/m/n on input line 116.
 LaTeX Font Info:    Trying to load font information for OMX+jkp on input line 1
-10.
+16.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/omxjkp.fd
 File: omxjkp.fd 2006/08/15 v1.0
 )
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for U/jkpexa/m/n on input line 110.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for U/jkpexa/m/n on input line 116.
 LaTeX Font Info:    Trying to load font information for U+jkpexa on input line 
-110.
+116.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/ujkpexa.fd
 File: ujkpexa.fd 2006/08/15 v1.0
 )
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 110.
-LaTeX Font Info:    ... okay on input line 110.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 110.
-LaTeX Font Info:    ... okay on input line 110.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/context/base/mkii/supp-p
 df.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count338
+\scratchcounter=\count343
 \scratchdimen=\dimen309
-\scratchbox=\box122
-\nofMPsegments=\count339
-\nofMParguments=\count340
-\everyMPshowfont=\toks56
-\MPscratchCnt=\count341
+\scratchbox=\box124
+\nofMPsegments=\count344
+\nofMParguments=\count345
+\everyMPshowfont=\toks59
+\MPscratchCnt=\count346
 \MPscratchDim=\dimen310
-\MPnumerator=\count342
-\makeMPintoPDFobject=\count343
-\everyMPtoPDFconversion=\toks57
+\MPnumerator=\count347
+\makeMPintoPDFobject=\count348
+\everyMPtoPDFconversion=\toks60
 )
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/epstopdf-pkg/epsto
 pdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/grfext/grfext.sty
+Package: grfext 2019/12/03 v1.3 Manage graphics extensions (HO)
+)
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 85.
+Package grfext Info: Graphics extension search list:
+(grfext)             [.pdf,.png,.jpg,.mps,.jpeg,.jbig2,.jb2,.PDF,.PNG,.JPG,.JPE
+G,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 504.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/00miktex/epstopdf-
 sys.cfg
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
 Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: float package is loaded.
 Package caption Info: hyperref package is loaded.
 Package caption Info: listings package is loaded.
 Package caption Info: End \AtBeginDocument code.
@@ -1547,7 +1586,7 @@ Package caption Info: End \AtBeginDocument code.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-Package hyperref Info: Link coloring OFF on input line 110.
+Package hyperref Info: Link coloring OFF on input line 116.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/hyperref/nameref.s
 ty
@@ -1561,83 +1600,106 @@ Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
 ettitlestring.sty
 Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 )
-\c@section@level=\count344
+\c@section@level=\count349
 )
-LaTeX Info: Redefining \ref on input line 110.
-LaTeX Info: Redefining \pageref on input line 110.
-LaTeX Info: Redefining \nameref on input line 110.
+LaTeX Info: Redefining \ref on input line 116.
+LaTeX Info: Redefining \pageref on input line 116.
+LaTeX Info: Redefining \nameref on input line 116.
  (./main.out) (./main.out)
 \@outlinefile=\write5
 
 \openout5 = main.out
-\c@lstlisting=\count345
+\c@lstlisting=\count350
 LaTeX Font Info:    Trying to load font information for OT1+jkp on input line 1
-13.
+19.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/ot1jkp.fd
 File: ot1jkp.fd 2007/08/30 Fontinst v1.928 font definitions for OT1/jkp.
 )
 LaTeX Font Info:    Trying to load font information for U+jkpsya on input line 
-113.
+119.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/ujkpsya.fd
 File: ujkpsya.fd 2006/08/15 v1.0
 )
 LaTeX Font Info:    Trying to load font information for U+jkpsyb on input line 
-113.
+119.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/ujkpsyb.fd
 File: ujkpsyb.fd 2006/08/15 v1.0
 )
 LaTeX Font Info:    Trying to load font information for U+jkpmia on input line 
-113.
+119.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/ujkpmia.fd
 File: ujkpmia.fd 2006/08/15 v1.0
 )
 LaTeX Font Info:    Trying to load font information for U+jkpsyc on input line 
-113.
+119.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/ujkpsyc.fd
 File: ujkpsyc.fd 2006/08/15 v1.0
+) (./main.toc)
+\tf@toc=\write6
+
+\openout6 = main.toc
+ [1
+
+{C:/Users/sebastiano/AppData/Local/MiKTeX/pdftex/config/pdftex.map}] [2]
+Underfull \hbox (badness 10000) in paragraph at lines 227--233
+
+ []
+
+[3]
+Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
+put line 272.
+ [4]
+LaTeX Font Info:    Trying to load font information for T1+jkptt on input line 
+336.
+
+(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/t1jkptt.fd
+File: t1jkptt.fd 2007/01/26 Fontinst v1.928 font definitions for T1/jkptt.
 )
 
 Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 122.
+(hyperref)                be the same. Added a new anchor on input line 375.
 
-
-Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 130.
-
-
-Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 135.
-
-[1
-
-{C:/Users/sebastiano/AppData/Local/MiKTeX/pdftex/config/pdftex.map}]
-(./main.aux)
+(./main.bbl [5]) [6] (./main.aux)
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: CAB4D44422DA87E759AE9DAC90C31FB0;2154.
+(rerunfilecheck)             Checksum: 01B4FCF2C78EE5AB24FCEDEE66E1EB68;1934.
 )
 
 Here is how much of LuaTeX's memory you used:
- 31260 strings out of 478089
- 125016,1373583 words of node,token memory allocated
- 607 words of node memory still in use:
-   7 hlist, 2 vlist, 2 rule, 2 glue, 8 kern, 2 glyph, 12 attribute, 64 glue_spec
-, 12 attribute_list, 2 write nodes
-   avail lists: 1:9,2:497,3:434,4:63,5:270,6:57,7:2299,8:30,9:249,10:8,11:159
- 50246 multiletter control sequences out of 65536+600000
- 78 fonts using 6433767 bytes
- 98i,6n,129p,482b,338s stack positions out of 5000i,500n,10000p,200000b,80000s
-{C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}<
-C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/public/kpfonts/jkp
-bn8a.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/public/k
-pfonts/jkpmn8a.pfb>
-Output written on main.pdf (1 page, 31736 bytes).
+ 32864 strings out of 478089
+ 476984,1373583 words of node,token memory allocated
+ 1592 words of node memory still in use:
+   7 hlist, 2 vlist, 2 rule, 2 glue, 119 kern, 3 sub_mlist, 1 glyph, 115 attribu
+te, 66 glue_spec, 115 attribute_list, 2 write, 1 pdf_action nodes
+   avail lists: 1:14,2:6854,3:388,4:9030,5:8648,6:100,7:16993,8:81,9:25609,10:50
+,11:1511
+ 51658 multiletter control sequences out of 65536+600000
+ 161 fonts using 11976935 bytes
+ 98i,12n,129p,482b,1104s stack positions out of 5000i,500n,10000p,200000b,80000s
+{C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}{
+C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/kpfonts/kpfont
+s-expert.enc}<C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/publ
+ic/kpfonts/jkpbn8a.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/
+type1/public/kpfonts/jkpbne.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKT
+eX/fonts/type1/public/kpfonts/jkpbsy.pfb><C:/Users/sebastiano/AppData/Local/Prog
+rams/MiKTeX/fonts/type1/public/kpfonts/jkpex.pfb><C:/Users/sebastiano/AppData/Lo
+cal/Programs/MiKTeX/fonts/type1/public/kpfonts/jkpmi.pfb><C:/Users/sebastiano/Ap
+pData/Local/Programs/MiKTeX/fonts/type1/public/kpfonts/jkpmia.pfb><C:/Users/seba
+stiano/AppData/Local/Programs/MiKTeX/fonts/type1/public/kpfonts/jkpmit8a.pfb><C:
+/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/public/kpfonts/jkpmn
+8a.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/public/kpf
+onts/jkpmne.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/p
+ublic/kpfonts/jkpmsc8a.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fo
+nts/type1/public/kpfonts/jkpsy.pfb><C:/Users/sebastiano/AppData/Local/Programs/M
+iKTeX/fonts/type1/public/kpfonts/jkpsyb.pfb><C:/Users/sebastiano/AppData/Local/P
+rograms/MiKTeX/fonts/type1/public/kpfonts/jkpttmn8a.pfb>
+Output written on main.pdf (6 pages, 170760 bytes).
 
-PDF statistics: 68 PDF objects out of 1000 (max. 8388607)
- 10 named destinations out of 1000 (max. 131072)
- 112 words of extra memory for PDF output out of 10000 (max. 100000000)
+PDF statistics: 234 PDF objects out of 1000 (max. 8388607)
+ 75 named destinations out of 1000 (max. 131072)
+ 120 words of extra memory for PDF output out of 10000 (max. 100000000)
 

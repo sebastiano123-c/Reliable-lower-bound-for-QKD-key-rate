@@ -183,9 +183,9 @@ start_time = time.time()
 # parameters
 epsilon = 1e-10
 Pz = 0.1
-start, stop, step = 0., 0.12, 3
-maxit = 100
-finesse = 5
+start, stop, step = 0., 0.12, 15
+maxit = 1000
+finesse = 20
 solver_name = "MOSEK"
 
 # pauli matrices
