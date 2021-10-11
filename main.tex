@@ -1,4 +1,4 @@
-\documentclass[12]{article}
+\documentclass{article}
 %packages
 \usepackage{graphicx}
 \usepackage{epigraph}
@@ -31,6 +31,12 @@
 \usepackage{kpfonts}
 \usepackage{listings}
 \usepackage{xcolor}
+% bibliography
+\usepackage{natbib}
+\bibliographystyle{dinat}
+% algorithm
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -85,16 +91,16 @@
 %settaggio dei teoremi
 \newtheorem{theorem}{Theorem}[section]
 %\newtheorem{proof}{Dimostrazione}
-\theoremstyle{definition}
-\newtheorem{definition}{Definition} 
-\theoremstyle{remark}
-\newtheorem{remark}{Remark}
-\theoremstyle{example}
-\newtheorem{example}{Example}
-\theoremstyle{corollary}
-\newtheorem{corollary}{Corollary}
-\theoremstyle{lemma}
-\newtheorem{lemma}{Lemma} 
+% \theoremstyle{definition}
+% \newtheorem{definition}{Definition} 
+% \theoremstyle{remark}
+% \newtheorem{remark}{Remark}
+% \theoremstyle{example}
+% \newtheorem{example}{Example}
+% \theoremstyle{corollary}
+% \newtheorem{corollary}{Corollary}
+% \theoremstyle{lemma}
+% \newtheorem{lemma}{Lemma} 
 
 \setcounter{secnumdepth}{1}
 \titlelabel{\thetitle\quad}
@@ -112,30 +118,268 @@
 \maketitle
 
 \begin{abstract}                % ~350 words max
-A key rate reliable lower bound is calculated for the standard four states BB84 protocol.
-\begin{enumerate}[(a)]
-\item 
-\end{enumerate}\end{abstract}
+    A key rate reliable lower bound for the standard four states BB84 protocol is calculated in condition of:
+    \begin{enumerate}
+        \item standard depolarizing channel;
+        % \item Trojan-horse attack (THA);
+        \item efficiency mismatch at receiver detectors.
+    \end{enumerate}
+\end{abstract}
+
+\tableofcontents
 
 \section{Theory}
-The BB84 protocol
- \subsection{Source-replacement scheme}
- \subsection{General QKD protocol in the finite regime}
+Quantum key distribution (QKD) allow two distant parties, generally called Alice and Bob, to share a key with unconditional security.
+QKD protocols communicate upon a quantum channel and a classical channel.
+Quantum channel is untrusted, public and unauthenticated so an eavesdropper, typically called Eve, can manipulate the message. 
+Classical channel is public and authenticated, so Alice and Bob recognize each other.
+    \phantomsection
+    \subsection{Source replacement scheme}
+    In prepare and measure (P\&M) schemes, Alice choose randomly the signal states \(\{\ket{\phi_i}\}_{i=1}^N\) with probability \(p_i\) in which encode the key bits and sends to Bob the sequence through a quantum channel;
+    Bob randomly choose a detection basis.
+    In the entangled based (EB) schemes, a bipartite state \(\psi_{AB}\) is sent to Alice and to Bob; Both Alice and Bob choose randomly the measurement basis.
 
- \subsection{Asymptotic analysis}
+    Alice and Bob communicate via classical channel to perform error correction and privacy amplification in order to extract the key.
 
- \subsection{Reliable lower bound}
+    EB schemes are more natural to describe the joint system between Alice and Bob.
+    P\&M schemes can be transposed into EB schemes using the so-called source-replacement scheme.
+
+    In the source-replacement scheme Alice creates the bipartite entangled state(\cite{Ferenczi_2012})
+    \[
+        \ket{\psi} = \sum_{i=1}^N\sqrt{p_i}\ket{i}_A\ket{\phi_i}_{A'},
+    \]
+    where \(\{\ket{i}\}_{i=1}^N\) is a basis of the Hilbert space \(\mathcal{H}^N\).
+    Alice keeps \(A\) and sends \(A'\) to Bob via quantum channel \(\mathcal{E}_AB\) which transforms \(A'\to B\).
+    For example, if the channel introduces depolarization with a probability \(p\) on a qubit \(\rho\),
+    \begin{equation}
+        \mathcal{E}_{AB}(\rho) = \sum_{i=1}^4 E_i \rho E_i^{\dagger}
+        \label{eqn:depolarizing-channel}
+    \end{equation}
+    where, using the Pauli matrices \(\{\sigma_i\}\), \(E_1=\sqrt{1-\frac{3}{4}p}\mathbb{I}_2\), \(E_2 = \sqrt{p/4}\sigma_x\), \(E_3 = \sqrt{p/4}\sigma_y\) and \(E_4 = \sqrt{p/4}\sigma_z\).
+    The state shared between Alice and Bob is denoted by \(\rho_{AB}\).
+
+    \subsection{Post-procecessing}
+    The post-processing phase can be divided into:
+    \begin{enumerate}
+        \item parameter estimation: Alice and Bob compute statistics on AN announced random data set and agree if proceed or aborting the communication;
+        \item public string announcement: Alice and Bob choose part of their bits, respectively \(\tilde{A}_i\) and \(\tilde{B}_i\) and communicate it over the classical channel. Alice and Bob also keep private part of the key in the sequences \(\bar{A}_{j}\) and \(\bar{B}_j\);
+        \item sifting phase: using the public string, Alice and Bob agree only on qubit in which they have used the same basis;
+        \item key map: Alice performs a key map function able to extract a key based on the public and private part of the keys of both Alice and Bob;
+        \item error correction: using classical methods, Alice and Bob agree on shorter but correlated key symbols. As proven by Shannon, this leakage is bounded by the mutual information \(I(A:B)=H(A)+H(B)-H(AB)=1-leak_{EC}\) where \(H\) is the Shannon entropy.
+    \end{enumerate}
+
+    \subsection{Protocol modelling}
+    Eve can use whatever strategy to extract as much information as possible from \(\rho_{AB}\):
+    \begin{enumerate}
+        \item individual attacks, Eve acts on a single qubit and performs her treatment on it before the classical post-processing phase;
+        \item collective attacks, Eve performs measurements after the post-processing phase on all the qubits she has gained.
+    \end{enumerate}
+    The simulation works under the assumption of identically and independently distributed (i.i.d.) collective attack, so it is possible to simulate only one qubit reducing drastically the dimension of the system.
+
+    The aim is to estimate the best attack Eve can do on \(\rho_{AB}\).
+    Following \cite{George_2021} and \cite{Winick2018reliablenumerical}, the constraints of the problem are given by Alice and Bob POVMs \(\{P^A_i\}\) and \(\{P^B_j\}\)
+    \begin{equation}
+        \Tr[(P^A_i\otimes P^B_j) \rho_{AB} ] = p_{ij}.
+        \label{eqn:constraints1}
+    \end{equation}
+    For P\&M schemes there are additional constraints, due to the fact that Eve cannot gain any information about the system \(A\), so
+    \begin{equation}
+        \Tr[(\Theta^A_i\otimes\mathbb{I}^B)\rho_{AB}] = \theta_i,
+        \label{eqn:constraints2}
+    \end{equation}
+    where \(\{\Theta_{i}\}_{i=1}^{dim \mathcal{H}_A}\) is a complete set of hermitian operators of \( \mathcal{H}_A \).
+    For EB schemes the \(p_{ij}, \theta_i\) constraints defines a set
+    \[S^{EB}=\left\{ \rho_{AB} | \Tr[(P^A_i\otimes P^B_j) \rho_{AB} ] = p_{ij}\right\}\]
+    and for P\&M schemes
+    \[S^{P\&M}=\left\{\rho_{AB} | \Tr[(P^A_i\otimes P^B_j) \rho_{AB}] = p_{ij},  \Tr[(\Theta^A_i\otimes\mathbb{I}^B)\rho_{AB}] = \theta_i\right\}.\]
+    To maintain a more general approach, I refer both to \(S^{EB}\) and \(S^{AB}\) with \(S\).
+
+    The public string announcement is represented by the following Kraus representation for Alice
+    \[K^A_{a} = \sum_{\bar{a}} \sqrt{P^A_{a,\bar{a}}} \ket{a}_{\tilde{A}}\ket{\bar{a}}_{\bar{A}} \]
+    and for Bob
+    \[K^B_{b} = \sum_{\bar{b}} \sqrt{P^B_{b,\bar{b}}} \ket{b}_{\tilde{B}}\ket{\bar{b}}_{\bar{B}} \]
+    where \((a,b)\) are the public parts of Alice and Bob key and \(\bar{a},\bar{b}\) are the private one.
+    The two POVMs acts on the system \(AB\)
+    \begin{equation}
+        \rho^1_{A\tilde{A}\bar{A}B\tilde{B}\bar{B}}=\sum_{a,b}(K^A_{a}\otimes K^B_b)\rho_{AB}(K^A_{a}\otimes K^B_b)^{\dagger}=\mathcal{A}(\rho_{AB}).
+        \label{eqn:kraus}
+    \end{equation}
+
+    Then sifting phase is performed.
+    Let \(\mathbf{A}\) be the set of all announcements that are kept.
+    Then the sifting phase can be seen as a projector
+    \begin{equation}
+        \Pi=\sum_{(a,b)\in\mathbf{A}}\ket{a}\bra{a}_{\tilde{A}}\otimes\ket{b}\bra{b}_{\tilde{B}}\to \rho^2_{A\tilde{A}\bar{A}B\tilde{B}\bar{B}} = \frac{\Pi \rho^1_{A\tilde{A}\bar{A}B\tilde{B}\bar{B}} \Pi}{p_{pass}}
+        \label{eqn:sifting}
+    \end{equation}
+    where \(p_{pass} = \Tr[\rho_{AB}\Pi]\) gives the probability of passing the post selection.
+
+    Alice chooses a key map, \(i.e.\) a function that, depending on Alice public and private parts \((a,\bar{a})\) and Bob announcement \(b\), returns a value \(g(a,\bar{a},b)\).
+    The value of the key map can be thought to be stored in a classical register called \(R\), so the key map operator is represented by an isometry
+    \begin{equation}
+        V = \sum_{a,\bar{a},b}\ket{g(a,\bar{a},b)}_R\ket{a}_{\tilde{A}}\ket{\bar{a}}_{\bar{A}}\ket{b}_{\tilde{B}}\to \rho^3_{RA\tilde{A}\bar{A}B\tilde{B}\bar{B}} = V \rho^2_{A\tilde{A}\bar{A}B\tilde{B}\bar{B}} V^{\dagger}.
+        \label{eqn:key-map}
+    \end{equation}
+    If \(R\) contains \(J\) symbols, the register turns out to be a classical register after applying a pinching channel on \(R\to Z^R\)
+    \begin{equation}
+        \mathcal{Z}(\rho) = \sum_{j=1}^{J} (\ket{j}\bra{j}_R\otimes\mathbb{I}) \rho (\ket{j}\bra{j}_R\otimes\mathbb{I})\to \rho^4_{Z^RA\tilde{A}\bar{A}B\tilde{B}\bar{B}} = \mathcal{Z}(\rho^3_{RA\tilde{A}\bar{A}B\tilde{B}\bar{B}})
+        \label{eqn:pinching}
+    \end{equation}
+    where the identity acts over all the other dimensions.
+    \\
+    \\    
+    If the post-selection process involves only a sifting phase and base announcement, then the formula reduces only to system \(A\) and \(B\) without other registers.
+    Suppose \(\{Z^A_i\}\) is the Alice key map POVM, then \eqref{eqn:relative-entropy} reduces to
+    \begin{equation}
+        f(\rho_{AB})=D\left(\rho_{AB}\bigg\vert\bigg\vert\sum_i (Z^A_i\otimes\mathbb{I}_B)\rho_{AB} (Z^A_i\otimes\mathbb{I}_B)\right).
+        \label{eqn:relative-entropy-simple}
+    \end{equation}
+
+    \subsection{Reliable lower bound}
+    The function to be minimized is the relative entropy \(D(\rho||\sigma)\) (also called Kullback–Leibler divergence), which is a measure of how one probability distribution is different from a second.
+    In particular, the simulation consider the divergence
+    \begin{equation}
+        f(\rho_{AB}) = D\left(\rho^3_{RA\tilde{A}\bar{A}B\tilde{B}\bar{B}}\big\vert\big\vert\rho^4_{Z^RA\tilde{A}\bar{A}B\tilde{B}\bar{B}}\right).
+        \label{eqn:relative-entropy}
+    \end{equation}
+    having defined the states as
+    \begin{align*}
+        \rho^3_{RA\tilde{A}\bar{A}B\tilde{B}\bar{B}} &= G(\rho_{AB}),\\
+        \rho^4_{Z^RA\tilde{A}\bar{A}B\tilde{B}\bar{B}} &= \mathcal{Z}(G(\rho_{AB}))
+    \end{align*}
+    where the \(G\) map is defined by
+    \[G(\rho_{AB}) = V\Pi \mathcal{A}(\rho_{AB})\Pi V^{\dagger}\]
+    and \(\mathcal{Z}\) map is defined in \eqref{eqn:pinching}.
+
+    The key rate is
+    \begin{align}
+        K =& p_{pass} \cdot \min_{\rho_{AB}}\left( H(Z^R | E\tilde{A}\tilde{B})\right)-p_{pass}\cdot leak^{EC} =\nonumber\\
+        & \min_{\rho_{AB}} D\left( G(\rho_{AB}) ||\mathcal{Z}(G(\rho_{AB}))\right) - leak^{EC}
+        \label{eqn:key-rate}
+    \end{align}
+    where \(Z^R\) is the classical register shared by Alice and Bob, and \(E\tilde{A}\tilde{B}\) is the portion of the system where Eve has complete access without any disturbance on \(A\) and \(B\).
+
+    Quantum relative entropy is a convex function, thus \(f(\rho)\) is a convex function in \(\rho\) and can be minimized using a semidefinite program (SDP).
+    Due to computer imprecision, the algorithm may exit before reaching the true lower bound.
+    Thus, the problem is converted to its dual in order to find the upper bound.
+    Then, a strategy can be split the algorithm into two steps:
+    \begin{enumerate}
+        \item[step 1]: estimation of the optimal attack Eve can apply to the qubits which gives an upper bound on the key rate;
+        \item[step 2]: study the inverse problem finding the upper bound.
+    \end{enumerate}
+    Let's see the step 1 algorithm:
+    \begin{algorithm}
+        \caption{}
+        \begin{algorithmic}[1]
+        \Statex \textbf{Result:} near optimal attack
+        \Statex \textbf{Parameters:} \(\epsilon > 0\), \(\rho_0\in S\), \(maxIteration\in\mathbb{N}\) and \(i=0\)
+        \begin{enumerate}
+            \item compute \(\Delta\rho = \arg\min_{\delta\rho}\Tr[ \delta\rho \grad f(\rho_i) ].\)
+            \item[] subject to \(\Delta\rho + \rho_i \in S\), \(\Tr[\Delta\rho]=0\) and hermiticity \(\Delta\rho=(\Delta\rho)^{\dagger}\);
+            \If {$\Tr[\Delta\rho\grad f(\rho_i)]<\epsilon $} go to step 2\EndIf
+            \item find \(\lambda\in[0,1]\) that minimizes \(f(\rho_i+\lambda\Delta\rho_i)\);
+            \item set $\rho_i \to \rho_i + \lambda \Delta\rho$;
+            \item set $i \to i + 1$;
+            \If {$i>maxIteration$} go to step 2\EndIf.
+        \end{enumerate}
+        \end{algorithmic}
+    \end{algorithm}
+
+    I want to stress the fact that the estimation of the lower bound does not depend on the state shared by \(AB\).
+    Indeed, the initial density operator \(\rho_0\) can be written as
+    \[\rho_0 = \sum_{j=1}^j\tilde{p_l}\tilde{\Gamma}_l + \sum_{k=1}^{dim \mathcal{H}_{AB}^2-j}\omega_k\Omega_k\]
+    where \(\{\tilde{\Gamma}_l\}_{l=1}^j\cup \{\tilde{\Omega}_k\}_{k=1}^{dim \mathcal{H}_{AB}^2-j}\)
+    is complete set of hermitian operators for the system \(AB\).
+    The first sector of this basis, \(\{\tilde{\Gamma}_l\}_{l=1}^j\), is an orthonormal set of \(l<m\) hermitian operators which is created applying the Gram-Schmidt process to \(\{\Gamma_j\}_{j=1}^{m}\), which are the \(m\) operators generating the constraints in \eqref{eqn:constraints1} and \eqref{eqn:constraints2};
+    \(\{\Omega_k\}_{k=1}^{dim \mathcal{H}_{AB}^2-j}\) are used to complete the basis.
+
+    In step 2, the reliable lower bound is found as a maximization problem.
+    Relative entropy is a highly non-linear function, so it may be difficult to find the dual problem;
+    A solution can be computing the dual of the linearization of the original problem SDP, which reads
+    \[\max_{\vec{y}\in S^*(\rho)}\vec{y}\cdot\vec{\gamma}, \quad S^*(\rho)=\{y\in \mathbb{R}|\sum_{i=1}^my_i\Gamma_i\leq \grad f(\rho) \} \]
+    where \(\vec{\gamma}=\{\gamma_1,\ldots,\gamma_m\}\) are the \(m\)-constraints of the SDP.
+    Finally, the reliable lower bound for the key rate is 
+    \[\beta(\rho)=f(\rho) - \Tr[\rho \grad f(\rho)] + \max_{\vec{y}\in S^*(\rho)}\vec{y}\cdot\vec{\gamma},\]
+    in which is present the result \(f(\rho)\) of the step 1.
 
 \section{Code development}
- \subsection{Operators definition}
+    My simulation is performed on a BB84 protocol, which is a QKD protocol in which bits are encoded using two mutually unbiased bases (MUB) \(Z=\{\ket{0}, \ket{1}\}\) and \(X=\{\ket{+},\ket{-}\}\) where \(\ket{+}=\frac{\ket{0}+\ket{1}}{\sqrt{2}}\) and \(\ket{-}=\frac{\ket{0}-\ket{1}}{\sqrt{2}}\).
+    Bit \( 0 \) can be encoded by the states \( \{ \ket{0}, \ket{+} \} \), while bit \(1\) by the states \( \{ \ket{1}, \ket{-} \} \).
 
- \subsection{SDP algorithm implementation}
+    The convex optimization is performed in python by the library \textrm{cvxpy} using the solver \textrm{MOSEK} which can be obtained under license \href{https://www.mosek.com/products/academic-licenses/}{here}.
+    Otherwise, \textrm{cvxpy} allow the use of license-free solver called \textrm{CVXOPT} or \textrm{SCS}.
+
+    I develop a python class called \textrm{QKD} able to simulate:
+    \begin{enumerate}
+        \item EB standard BB84 protocol;
+        % \item P\&M BB84 with THA;
+        \item EB standard BB84 protocol with efficiency mismatch at detector.
+    \end{enumerate}
+
+    \subsection{EB standard BB84 protocol}
+    Suppose both Alice and Bob perform measurements in the \(Z\) basis with probability \(p_z\) and in the \(X\) basis with probability \(p_x\).
+    Then the public announcement is composed by the Kraus operators
+    \begin{align*}
+        K^A_Z =& \sqrt{p_z}\ket{0}\bra{0}_A\ket{0}_{\tilde{A}}\ket{0}_{\bar{A}}+\sqrt{p_z}\ket{1}\bra{1}_A\ket{0}_{\tilde{A}}\ket{1}_{\bar{A}}\\
+        K^A_X =& \sqrt{1-p_z}\ket{+}\bra{+}_A\ket{1}_{\tilde{A}}\ket{0}_{\bar{A}}+\sqrt{1-p_z}\ket{-}\bra{-}_A\ket{1}_{\tilde{A}}\ket{1}_{\bar{A}}\\
+        K^B_Z =& \sqrt{p_z}\ket{0}\bra{0}_B\ket{0}_{\tilde{B}}\ket{0}_{\bar{B}}+\sqrt{p_z}\ket{1}\bra{1}_B\ket{0}_{\tilde{B}}\ket{1}_{\bar{B}}\\
+        K^B_X =& \sqrt{1-p_z}\ket{+}\bra{+}_B\ket{1}_{\tilde{B}}\ket{0}_{\bar{B}}+\sqrt{1-p_z}\ket{-}\bra{-}_B\ket{1}_{\tilde{B}}\ket{1}_{\bar{B}},
+    \end{align*}
+    the sifting phase is defined by the projector
+    \[\Pi=\ket{0}\bra{0}_{\tilde{A}}\otimes\ket{0}\bra{0}_{\tilde{B}}+\ket{1}\bra{1}_{\tilde{A}}\otimes\ket{1}\bra{1}_{\tilde{B}}\]
+    and the key map is 
+    \[V=\ket{0}_R\ket{0}\bra{0}_{\bar{A}}+\ket{1}_R\ket{1}\bra{1}_{\bar{A}}\]
+    and identity acting on the other subsystems.
+    These operators define the \(G\) map and the problem is completely set.
+
+    If the choice of these Kraus operators, sifting and isometry is standard, as in this case, calling the python class \textrm{QKD} will create all the structure described above
+    \begin{lstlisting}[style=python]
+        from src import qkd
+        import numpy as np
+        # ...
+        sim = qkd.QKD(da=2, db=2, nst=4, # dim A, # dim b, # of signal states
+            [qkd.zero, qkd.one, qkd.plus, qkd.minus], [0.25, 0.25, 0.25, 0.25], # A states and prob
+            [qkd.zero, qkd.one, qkd.plus, qkd.minus], [0.25, 0.25, 0.25, 0.25]) # B states and prob\end{lstlisting}
+    Then, Eve presence in the communication is quantified by the quantum bit error rate \(Q\) (QBER) by means of the depolarization \(p=2\cdot Q\) using \eqref{eqn:depolarizing-channel}
+    \begin{lstlisting}[style=python]
+        qber, key_primal, key_dual, key_th = [0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.12], [], [], []
+        for ii in qber:
+            # for theorical curve and leak^{EC}
+            hp = qkd.binary_entropy(ii) 
+
+            # apply quantum channel
+            sim.apply_quantum_channel(qkd.depolarizing_channel(2*ii))
+
+            gamma = []
+            for jj in sim.povm: # get AB povm from QKD
+                gamma.append(np.trace(jj @ sim.rho_ab)) # rho_AB is authomatically calculated by QKD
+
+            # set contraints
+            sim.set_constraints(gamma, sim.povm)
+
+            # compute 
+            sim.compute_primal()
+            sim.compute_dual()
+
+            # getting result
+            key_th     = 1 - hp - hp # hp is the leak from error correction
+            key_primal = sim.primal_sol - hp # hp is the leak from error correction
+            key_dual   = sim.dual_sol - hp # hp is the leak from error correction \end{lstlisting}
+
+    \subsection{EB BB84 with efficiency mismatch on detectors}
+        In this case 
+
+
 
 \section{Results}
- \subsection{Reliable lower bound for BB84 (**simple case**)}
+ \subsection{Standard BB84}
 
- \subsection{Reliable lower bound for BB84 (**complete case**)}
+ \subsection{Efficiency mismatch}
+
+ \subsection{Trojan-horse attack}
 
 \section{Self-evaluation}
+
+\bibliography{bibliography/bibliography}
 
 \end{document}
