@@ -174,47 +174,15 @@
 #---------------------------------------------------------------------
 
 import numpy as np
-from scipy.linalg import sqrtm
 from src import qkd
 import matplotlib.pyplot as plt
-import time
-
-start_time = time.time()
-
-# parameters
-da = 4
-db = 2
-dtot = da*db
-nst = 4
-epsilon = 1e-11
-Pz = 0.5
-start, stop, step = 0., 0.12, 15
-maxit = 1000
-finesse = 100
-solver_name = "MOSEK"
-
-# define states
-states = [qkd.zero, qkd.one, qkd.plus, qkd.minus]
-basis = np.eye(da)
-
-# ALICE probabilities
-Px = (1. - Pz)
-ProbAlice = [Pz, Pz, Px, Px]
-if (np.sum(ProbAlice) != 1): print("ProbAlice != 1")
-
-# BOB porbabilities
-BS = [0.5, 0.5] # beamsplitter
-ProbBob = [BS[0]/2., BS[0]/2., BS[1]/2., BS[1]/2.]
-if (np.sum(ProbBob) != 1): print("ProbBob != 1")
-
-#  post selection and probability of passing the post selection process
-postselect_prob = [Pz*BS[0], Px*BS[1]]
-ppass = sum(postselect_prob)
 
 # new simulation
-sim = qkd.QKD(4, 2 ,4, basis, ProbAlice, states, ProbBob)
+sim = qkd.QKD(dim_a=4, dim_b=2 , n_of_signal_states=4,
+    list_states_a=np.eye(4), list_of_prob_a=[0.5, 0.5, 0.5, 0.5],
+    list_states_b=[qkd.zero, qkd.one, qkd.plus, qkd.minus], list_of_prob_b=[0.25, 0.25, 0.25, 0.25])
 
-qber = np.linspace(start, stop, step)
+qber = np.linspace(0., 0.12, 15)
 
 key_th      = []
 key_primal  = []
@@ -239,7 +207,7 @@ for ii in qber:
     sim.set_constraints(gamma, np.concatenate([sim.orth_set_a, sim.povm]))
 
     # compute primal and dual problem
-    sim.compute_primal(epsilon, maxit, finesse)
+    sim.compute_primal(epsilon=1e-11, maxit=1000, finesse=100)
     sim.compute_dual(solver_name="MOSEK")
 
     key_th.append(1 - 2*hp)
@@ -249,8 +217,6 @@ for ii in qber:
     print("--- --- --- --- --- --- --- --- ---")
     print(" step 1 =", sim.primal_sol)
     print(" step 2 =", sim.dual_sol)
-
-print( "\n CPU time: ", time.time() - start_time, "s")
 
 fig, ax = plt.subplots(figsize=(20, 11))
 ax.plot(qber, key_th, "--", linewidth=1.2, alpha=0.5, label="theorical")
@@ -263,5 +229,4 @@ plt.ylim([0., None])
 plt.xlim([0., None])
 plt.legend(loc='best')
 plt.grid()
-plt.savefig("analysis/PM_standard_bb84_"+str(100*Pz)+".png")
 plt.show()

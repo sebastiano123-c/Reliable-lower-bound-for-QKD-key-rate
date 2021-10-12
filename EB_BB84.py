@@ -7,9 +7,6 @@ EB simple BB84
 from src import qkd
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-
-start_time = time.time()
 
 # new simulation
 sim = qkd.QKD(dim_a=2, dim_b=2, n_of_signal_states=4,
@@ -49,9 +46,6 @@ for ii in qber:
     print(" step 1 =", sim.primal_sol)
     print(" step 2 =", sim.dual_sol)
 
-# CPU time
-print( "\n CPU time: ", time.time() - start_time, "s")
-
 # plot
 fig, ax = plt.subplots(figsize=(20, 11))
 ax.plot(qber, key_th, "--", linewidth=1.2, alpha=0.5, label="theorical")
@@ -64,5 +58,4 @@ plt.ylim([0., None])
 plt.xlim([0., None])
 plt.legend(loc='best')
 plt.grid()
-# plt.savefig("analysis/bb84"+str(100*Pz)+".png")
 plt.show()
