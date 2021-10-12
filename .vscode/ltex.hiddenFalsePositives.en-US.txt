@@ -1,0 +1,1 @@
+{"rule":"DOUBLE_NEGATIVE","sentence":"^\\QIn this repo we don't use neither 'therefore' nor 'furthermore'\\E$"}
