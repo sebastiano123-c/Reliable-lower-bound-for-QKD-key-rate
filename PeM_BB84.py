@@ -186,11 +186,11 @@ da = 4
 db = 2
 dtot = da*db
 nst = 4
-epsilon = 1e-10
+epsilon = 1e-11
 Pz = 0.5
-start, stop, step = 0., 0.12, 3
+start, stop, step = 0., 0.12, 15
 maxit = 1000
-finesse = 5
+finesse = 100
 solver_name = "MOSEK"
 
 # define states
@@ -203,7 +203,7 @@ ProbAlice = [Pz, Pz, Px, Px]
 if (np.sum(ProbAlice) != 1): print("ProbAlice != 1")
 
 # BOB porbabilities
-BS = [0.7, 0.3] # beamsplitter
+BS = [0.5, 0.5] # beamsplitter
 ProbBob = [BS[0]/2., BS[0]/2., BS[1]/2., BS[1]/2.]
 if (np.sum(ProbBob) != 1): print("ProbBob != 1")
 
@@ -258,10 +258,10 @@ ax.plot(qber, key_primal, "o", alpha=0.5, label="step 1")
 ax.plot(qber, key_dual, ".", alpha=0.5, label="step 2")
 plt.xlabel("QBER")
 plt.ylabel("Secret key rate")
-plt.title("Reliable lower bound P&M BB84 with public announcement and sifting")
+plt.title("Reliable lower bound for P&M BB84 protocol")
 plt.ylim([0., None])
 plt.xlim([0., None])
 plt.legend(loc='best')
 plt.grid()
-plt.savefig("analysis/test_"+str(100*Pz)+".png")
+plt.savefig("analysis/PM_standard_bb84_"+str(100*Pz)+".png")
 plt.show()

@@ -1,3 +1,9 @@
+
+"""
+EB simple BB84
+
+@author: Sebastiano Cocchi
+"""
 from src import qkd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,43 +11,13 @@ import time
 
 start_time = time.time()
 
-# dimensions
-da = 2
-db = 2
-nst = 4
-dtot = da*db
-
-# parameters
-epsilon = 1e-10
-Pz = 0.5
-start, stop, step = 0., 0.12, 15
-maxit = 1000
-finesse = 20
-solver_name = "MOSEK"
-
-# define states
-states = [qkd.zero, qkd.one, qkd.plus, qkd.minus]
-
-# ALICE probabilities
-Px = (1. - Pz)
-ProbAlice = [Pz/2., Pz/2., Px/2, Px/2]
-if (np.sum(ProbAlice) != 1): print("ProbAlice != 1")
-
-# BOB porbabilities
-BS = [0.7, 0.3] # beamsplitter
-ProbBob = [BS[0]/2., BS[0]/2., BS[1]/2., BS[1]/2.]
-if (np.sum(ProbBob) != 1): print("ProbBob != 1")
-
 # new simulation
-sim = qkd.QKD(da, db, nst, states, ProbAlice, states, ProbBob)
+sim = qkd.QKD(dim_a=2, dim_b=2, n_of_signal_states=4,
+    list_states_a=[qkd.zero, qkd.one, qkd.plus, qkd.minus], list_of_prob_a=[0.25, 0.25, 0.25, 0.25],
+    list_states_b=[qkd.zero, qkd.one, qkd.plus, qkd.minus], list_of_prob_b=[0.25, 0.25, 0.25, 0.25])
 
 # define qber interval
-qber = np.linspace(start, stop, step)
-
-# result arrays
-key_th      = []
-key_primal  = []
-key_dual    = []
+qber, key_th, key_primal, key_dual = np.linspace(0., 0.12, 15), [], [], []
 
 # iteration
 for ii in qber:
@@ -60,7 +36,7 @@ for ii in qber:
     sim.set_constraints(gamma, sim.povm)
 
     # compute primal and dual problem
-    sim.compute_primal(epsilon, maxit, finesse, "MOSEK")
+    sim.compute_primal(epsilon=1e-11, maxit=1000, finesse=100, solver_name="MOSEK")
     sim.compute_dual(solver_name="MOSEK")
 
     # append
@@ -83,7 +59,7 @@ ax.plot(qber, key_primal, "o", alpha=0.5, label="step 1")
 ax.plot(qber, key_dual, ".", alpha=0.5, label="step 2")
 plt.xlabel("QBER")
 plt.ylabel("Secret key rate")
-plt.title("Reliable lower bound P&M BB84 with public announcement and sifting")
+plt.title("Reliable lower bound EB BB84 with public announcement and sifting")
 plt.ylim([0., None])
 plt.xlim([0., None])
 plt.legend(loc='best')

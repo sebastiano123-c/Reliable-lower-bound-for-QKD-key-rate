@@ -4,6 +4,7 @@
 import numpy as np
 from scipy.linalg import logm, block_diag, sqrtm
 import cvxpy as cp
+import time
 
 # pauli matrices
 pauli    = [
@@ -23,6 +24,8 @@ pauli_4D = [
     [[0,0,0], [0,0,-1j], [0,1j,0]],
     [[1,0,0], [0,1,0], [0,0,-2]]/np.sqrt(3.)
 ]
+Y = np.array([[0,1,0], [0,0,1], [1,0,0]])
+Z = np.array([[1,0,0], [0,np.exp(2*np.pi*1j/3),0], [0,0,np.exp(4*np.pi*1j/3)]])
 
 # qubits
 zero   = np.array([1,0])
@@ -190,7 +193,7 @@ def depolarizing_channel(p, dim=2):
     """
     returns the Kraus representation of the depolaring channel with probability p
     """
-    # initialize with the lower dimensio
+    # initialize with the lower dimension
     if dim == 2:
         new_dim = 2
         depo = [
@@ -202,15 +205,15 @@ def depolarizing_channel(p, dim=2):
     elif dim == 3:
         new_dim = 3
         depo = [ 
-            np.sqrt(1-8/9*p)*np.array( pauli_4D[0] ),
-            np.sqrt(p/9)*np.array( pauli_4D[1] ),
-            np.sqrt(p/9)*np.array( pauli_4D[2] ),
-            np.sqrt(p/9)*np.array( pauli_4D[3] ),
-            np.sqrt(p/9)*np.array( pauli_4D[4] ),
-            np.sqrt(p/9)*np.array( pauli_4D[5] ),
-            np.sqrt(p/9)*np.array( pauli_4D[6] ),
-            np.sqrt(p/9)*np.array( pauli_4D[7] ),
-            np.sqrt(p/9)*np.array( pauli_4D[8] )
+            np.sqrt(1-p)*np.eye(dim),
+            np.sqrt(p/8)*Y,
+            np.sqrt(p/8)*Z,
+            np.sqrt(p/8)*Y@Y,
+            np.sqrt(p/8)*Y@Z,
+            np.sqrt(p/8)*Y@Y@Z,
+            np.sqrt(p/8)*Y@Z@Z,
+            np.sqrt(p/8)*Y@Y@Z@Z,
+            np.sqrt(p/8)*Z@Z
         ]
     else:
         print("depolarizing_channel:: dimension", dim," not yet support please try with dim = 2 or dim = 3")
@@ -231,6 +234,7 @@ def direct_sum(A, B):
     return block_diag(A, B)
 
 class QKD:
+# __init__
     def __init__(self, dim_a, dim_b, n_of_signal_states, list_states_a, list_of_prob_a, list_states_b, list_of_prob_b,
     povm_a=None,
     povm_b=None,
@@ -240,7 +244,8 @@ class QKD:
     key_map=None,
     pinching_channel=None,
     key_map_povm=None,
-    announcement_register_a=[zero, one], announcement_register_b=[zero, one]):
+    announcement_register_a=[zero, one], announcement_register_b=[zero, one],
+    simulation_name=None):
 
         # dimensions
         self.da     = dim_a
@@ -337,6 +342,11 @@ class QKD:
         self.dual_sol     = 0
         self.grad_f       = []
         self.delta_rho_i  = []
+        self.precision    = 0
+
+        # log file
+        self.start_time = time.time()
+        self.open_log_file(simulation_name=simulation_name)
 
 # private
 
@@ -428,23 +438,23 @@ class QKD:
         """
          private: SIFTING PHASE: acts like a projector with dimension [da*4*db*4]-by-[da*4*db*4]
         """ 
-        self.sifting_phase_postselection = np.kron( np.eye(self.da), np.kron( k0b0, np.kron( np.kron(np.eye(2), np.eye(self.db)), np.kron( k0b0, np.eye(2) ))) ) +\
-            np.kron( np.eye(self.da), np.kron( k1b1, np.kron( np.kron(np.eye(2), np.eye(self.db)), np.kron( k1b1, np.eye(2) ))) )
+        self.sifting_phase_postselection = np.kron( np.eye(self.da), np.kron( k0b0, np.kron( np.kron(np.eye(self.dim_register_a), np.eye(self.db)), np.kron( k0b0, np.eye(self.dim_register_b) ))) ) +\
+            np.kron( np.eye(self.da), np.kron( k1b1, np.kron( np.kron(np.eye(self.dim_register_a), np.eye(self.db)), np.kron( k1b1, np.eye(self.dim_register_b) ))) )
 
     def __get_key_map(self):
         """
          private: KEY MAP: is a isometry which creates a new register R which stores the information on the bits and it is a [2*da*4*db*4]-by-[2*da*4*db*4] matrix
         """ 
-        self.key_map = np.kron( zero[:, np.newaxis], np.kron( np.kron(np.eye(self.da), np.eye(2)), np.kron( k0b0, np.kron(np.eye(self.db), np.eye(4))) )) +\
-                       np.kron( one[:, np.newaxis] , np.kron( np.kron(np.eye(self.da), np.eye(2)), np.kron( k1b1, np.kron(np.eye(self.db), np.eye(4))) ))
+        self.key_map = np.kron( zero[:, np.newaxis], np.kron( np.kron(np.eye(self.da), np.eye(self.dim_register_a)), np.kron( k0b0, np.kron(np.eye(self.db), np.eye(self.dim_register_b**2))) )) +\
+                       np.kron( one[:, np.newaxis] , np.kron( np.kron(np.eye(self.da), np.eye(self.dim_register_a)), np.kron( k1b1, np.kron(np.eye(self.db), np.eye(self.dim_register_b**2))) ))
 
     def __get_pinching_channel(self):
         """
          private: PINCHING CHANNEL: decohere the register R. It has the effect of making R a classical register
         """ 
         self.pinching_channel = [
-            np.kron( k0b0 , np.kron( np.kron(np.eye(self.da), np.kron( np.eye(4), np.eye(self.db) )), np.eye(4) )),
-            np.kron( k1b1 , np.kron( np.kron(np.eye(self.da), np.kron( np.eye(4), np.eye(self.db) )), np.eye(4) ))
+            np.kron( k0b0 , np.kron( np.kron(np.eye(self.da), np.kron( np.eye(self.dim_register_a**2), np.eye(self.db) )), np.eye(self.dim_register_b**2) )),
+            np.kron( k1b1 , np.kron( np.kron(np.eye(self.da), np.kron( np.eye(self.dim_register_a**2), np.eye(self.db) )), np.eye(self.dim_register_b**2) ))
         ]
 
     def __get_full_hermitian_operator_basis(self):
@@ -638,6 +648,8 @@ class QKD:
         """
         rho_ab, sumkt = 0., 0.
 
+        is_kraus(channel_kraus_operator, "Depo4")
+
         # apply operators
         for jj in channel_kraus_operator:
             kraus_temp = np.kron( np.eye(self.da), jj)
@@ -645,13 +657,14 @@ class QKD:
             sumkt = sumkt + np.conj( kraus_temp ).T @ kraus_temp
         
         # normalize
-        # rho_ab = rho_ab / np.trace(rho_ab)
+        rho_ab = rho_ab / np.trace(rho_ab)
 
         # check if it is physical
         is_physical(rho_ab, 1e-8, "rho_ab")
     
         # check the depolarization satisfy Kraus representation property
-        if( np.allclose( sumkt, np.eye(self.dtot)) == False): print("Depo4 is not kraus.")
+        if( np.allclose( sumkt, np.eye(self.dtot)) == False): print("Depo4 is not kraus.", sumkt)
+
         
         # add variable
         self.rho_ab = rho_ab
@@ -734,7 +747,7 @@ class QKD:
         primal_problem = cp.Problem( obj, constraints )
         return primal_problem, X
 
-    def compute_primal(self, epsilon = 1e-10, maxit = 20, finesse = 10, solver_name = 'MOSEK', solver_verbosity = False):
+    def compute_primal(self, epsilon = 1e-11, maxit = 1000, finesse = 10, solver_name = 'MOSEK', solver_verbosity = False):
         # epsilon=1e-10, maxit=20, finesse=10, solver_name='CVXOPT'
         ''''
         computes the primal problem with compute_primal_problem
@@ -854,7 +867,22 @@ class QKD:
         self.dual_sol =  np.real(self.primal_sol - np.trace( self.rho_i @ self.grad_f ) + dual_problem.value)
 
         # print difference between setp 1 and step 2
+        self.precision = abs(self.dual_sol - self.primal_sol)
         print("precision (step1-step2) =", abs(self.dual_sol - self.primal_sol))
+
+        self.write_log_file(str(time.time()-self.start_time)+", "+str(self.primal_sol)+", "+str(self.dual_sol)+", "+str(self.precision))
+        self.start_time = time.time()
 
         # return
         return self.dual_sol
+    
+    def write_log_file(self, string):
+        self.f.write("\n"+string)
+
+    def open_log_file(self, filename="QKD.csv", simulation_name=None):
+        self.f = open("analysis/"+filename, "a")
+        if simulation_name is not None: self.write_log_file(simulation_name)
+        self.write_log_file("time [s], primal, dual, precision")
+
+    def close_log_file(self):
+        self.f.close()

@@ -43,25 +43,25 @@
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
 
-\lstdefinestyle{fortran}{
-    language=Fortran,
-    backgroundcolor=\color{backcolour},   
-    commentstyle=\color{codepurple},
-    keywordstyle=\color{codegreen},
-    numberstyle=\tiny\color{codegray},
-    stringstyle=\color{red},
-    basicstyle=\ttfamily\footnotesize,
-    breakatwhitespace=false,         
-    breaklines=true,                 
-    captionpos=b,                    
-    keepspaces=true,                 
-    numbers=left,                    
-    numbersep=5pt,                  
-    showspaces=false,                
-    showstringspaces=false,
-    showtabs=false,                  
-    tabsize=2
-}
+% \lstdefinestyle{fortran}{
+%     language=Fortran,
+%     backgroundcolor=\color{backcolour},   
+%     commentstyle=\color{codepurple},
+%     keywordstyle=\color{codegreen},
+%     numberstyle=\tiny\color{codegray},
+%     stringstyle=\color{red},
+%     basicstyle=\ttfamily\footnotesize,
+%     breakatwhitespace=false,         
+%     breaklines=true,                 
+%     captionpos=b,                    
+%     keepspaces=true,                 
+%     numbers=left,                    
+%     numbersep=5pt,                  
+%     showspaces=false,                
+%     showstringspaces=false,
+%     showtabs=false,                  
+%     tabsize=2
+% }
 \lstdefinestyle{python}{
     language=python,
     backgroundcolor=\color{backcolour},   
@@ -82,7 +82,7 @@
     tabsize=2
 }
 {\lstset{style=python}}
-{\lstset{style=fortran}}
+% {\lstset{style=fortran}}
 %TITOLO
 \title{KEY RATE RELIABLE LOWER BOUND FOR BB84 PROTOCOL}
 \author{Sebastiano Cocchi }
@@ -118,7 +118,7 @@
 \maketitle
 
 \begin{abstract}                % ~350 words max
-    A key rate reliable lower bound for the standard four states BB84 protocol is calculated in condition of:
+    Following \cite{George_2021} and \cite{Winick2018reliablenumerical} papers, a key rate reliable lower bound for the standard four states BB84 protocol is calculated in condition of:
     \begin{enumerate}
         \item standard depolarizing channel;
         % \item Trojan-horse attack (THA);
@@ -177,7 +177,7 @@ Classical channel is public and authenticated, so Alice and Bob recognize each o
     The simulation works under the assumption of identically and independently distributed (i.i.d.) collective attack, so it is possible to simulate only one qubit reducing drastically the dimension of the system.
 
     The aim is to estimate the best attack Eve can do on \(\rho_{AB}\).
-    Following \cite{George_2021} and \cite{Winick2018reliablenumerical}, the constraints of the problem are given by Alice and Bob POVMs \(\{P^A_i\}\) and \(\{P^B_j\}\)
+    Following \cite{George_2021} and \cite{Winick2018reliablenumerical}, the constraints of the problem are given by Alice and Bob POVM \(\{P^A_i\}\) and \(\{P^B_j\}\)
     \begin{equation}
         \Tr[(P^A_i\otimes P^B_j) \rho_{AB} ] = p_{ij}.
         \label{eqn:constraints1}
@@ -199,7 +199,7 @@ Classical channel is public and authenticated, so Alice and Bob recognize each o
     and for Bob
     \[K^B_{b} = \sum_{\bar{b}} \sqrt{P^B_{b,\bar{b}}} \ket{b}_{\tilde{B}}\ket{\bar{b}}_{\bar{B}} \]
     where \((a,b)\) are the public parts of Alice and Bob key and \(\bar{a},\bar{b}\) are the private one.
-    The two POVMs acts on the system \(AB\)
+    The two POVM acts on the system \(AB\)
     \begin{equation}
         \rho^1_{A\tilde{A}\bar{A}B\tilde{B}\bar{B}}=\sum_{a,b}(K^A_{a}\otimes K^B_b)\rho_{AB}(K^A_{a}\otimes K^B_b)^{\dagger}=\mathcal{A}(\rho_{AB}).
         \label{eqn:kraus}
@@ -296,20 +296,24 @@ Classical channel is public and authenticated, so Alice and Bob recognize each o
     In step 2, the reliable lower bound is found as a maximization problem.
     Relative entropy is a highly non-linear function, so it may be difficult to find the dual problem;
     A solution can be computing the dual of the linearization of the original problem SDP, which reads
-    \[\max_{\vec{y}\in S^*(\rho)}\vec{y}\cdot\vec{\gamma}, \quad S^*(\rho)=\{y\in \mathbb{R}|\sum_{i=1}^my_i\Gamma_i\leq \grad f(\rho) \} \]
+    \[\max_{\vec{z}\in S^*(\rho)}\vec{z}\cdot\vec{\gamma}, \quad S^*(\rho)=\{z\in \mathbb{R}|\sum_{i=1}^mz_i\Gamma_i\leq \grad f(\rho) \} \]
     where \(\vec{\gamma}=\{\gamma_1,\ldots,\gamma_m\}\) are the \(m\)-constraints of the SDP.
     Finally, the reliable lower bound for the key rate is 
-    \[\beta(\rho)=f(\rho) - \Tr[\rho \grad f(\rho)] + \max_{\vec{y}\in S^*(\rho)}\vec{y}\cdot\vec{\gamma},\]
+    \[\beta(\rho)=f(\rho) - \Tr[\rho \grad f(\rho)] + \max_{\vec{z}\in S^*(\rho)}\vec{z}\cdot\vec{\gamma},\]
     in which is present the result \(f(\rho)\) of the step 1.
 
 \section{Code development}
     My simulation is performed on a BB84 protocol, which is a QKD protocol in which bits are encoded using two mutually unbiased bases (MUB) \(Z=\{\ket{0}, \ket{1}\}\) and \(X=\{\ket{+},\ket{-}\}\) where \(\ket{+}=\frac{\ket{0}+\ket{1}}{\sqrt{2}}\) and \(\ket{-}=\frac{\ket{0}-\ket{1}}{\sqrt{2}}\).
     Bit \( 0 \) can be encoded by the states \( \{ \ket{0}, \ket{+} \} \), while bit \(1\) by the states \( \{ \ket{1}, \ket{-} \} \).
 
+    To implement the theory into a PC simulation I have written a python class called \textrm{QKD}, which automatically elaborates the operators needed if not provided in the initialization of the object.
+    Once the simulation object is created, it is possible to apply quantum channel passing the operators which represent the channel action on the qubit sent from A to B;
+    Then, the class allow computing primal and dual SDP.
+
     The convex optimization is performed in python by the library \textrm{cvxpy} using the solver \textrm{MOSEK} which can be obtained under license \href{https://www.mosek.com/products/academic-licenses/}{here}.
     Otherwise, \textrm{cvxpy} allow the use of license-free solver called \textrm{CVXOPT} or \textrm{SCS}.
 
-    I develop a python class called \textrm{QKD} able to simulate:
+    The following subsections will bring some examples, in particular:
     \begin{enumerate}
         \item EB standard BB84 protocol;
         % \item P\&M BB84 with THA;
@@ -318,67 +322,287 @@ Classical channel is public and authenticated, so Alice and Bob recognize each o
 
     \subsection{EB standard BB84 protocol}
     Suppose both Alice and Bob perform measurements in the \(Z\) basis with probability \(p_z\) and in the \(X\) basis with probability \(p_x\).
+    Alice and Bob POVM are then symmetric
+    \\
+    \begin{minipage}{.5\linewidth}
+        \begin{align*}
+            P^A_0 =& p_z \ket{0}\bra{0}_A,\\
+            P^A_1 =& p_z \ket{1}\bra{1}_A,\\
+            P^A_+ =& (1-p_z) \ket{+}\bra{+}_A,\\
+            P^A_- =& (1-p_z) \ket{-}\bra{-}_A
+        \end{align*}
+    \end{minipage}
+    \begin{minipage}{.5\linewidth}
+        \begin{align*}
+            P^B_0 =& p_z \ket{0}\bra{0}_B,\\
+            P^B_1 =& p_z \ket{1}\bra{1}_B,\\
+            P^B_+ =& (1-p_z) \ket{+}\bra{+}_B,\\
+            P^B_- =& (1-p_z) \ket{-}\bra{-}_B.
+        \end{align*}
+    \end{minipage}
+    \\
     Then the public announcement is composed by the Kraus operators
     \begin{align*}
-        K^A_Z =& \sqrt{p_z}\ket{0}\bra{0}_A\ket{0}_{\tilde{A}}\ket{0}_{\bar{A}}+\sqrt{p_z}\ket{1}\bra{1}_A\ket{0}_{\tilde{A}}\ket{1}_{\bar{A}}\\
-        K^A_X =& \sqrt{1-p_z}\ket{+}\bra{+}_A\ket{1}_{\tilde{A}}\ket{0}_{\bar{A}}+\sqrt{1-p_z}\ket{-}\bra{-}_A\ket{1}_{\tilde{A}}\ket{1}_{\bar{A}}\\
-        K^B_Z =& \sqrt{p_z}\ket{0}\bra{0}_B\ket{0}_{\tilde{B}}\ket{0}_{\bar{B}}+\sqrt{p_z}\ket{1}\bra{1}_B\ket{0}_{\tilde{B}}\ket{1}_{\bar{B}}\\
-        K^B_X =& \sqrt{1-p_z}\ket{+}\bra{+}_B\ket{1}_{\tilde{B}}\ket{0}_{\bar{B}}+\sqrt{1-p_z}\ket{-}\bra{-}_B\ket{1}_{\tilde{B}}\ket{1}_{\bar{B}},
+        K^A_1 =& \sqrt{P^A_0}\ket{0}_{\tilde{A}}\ket{0}_{\bar{A}}+\sqrt{P^A_1}\ket{0}_{\tilde{A}}\ket{1}_{\bar{A}},\quad K^A_2 = \sqrt{P^A_+}\ket{1}_{\tilde{A}}\ket{0}_{\bar{A}}+\sqrt{P^A_-}\ket{1}_{\tilde{A}}\ket{1}_{\bar{A}},\\
+        K^B_1 =& \sqrt{P^B_0}\ket{0}_{\tilde{B}}\ket{0}_{\bar{B}}+\sqrt{P^B_1}\ket{0}_{\tilde{B}}\ket{1}_{\bar{B}},\quad K^B_2 = \sqrt{P^B_+}\ket{1}_{\tilde{B}}\ket{0}_{\bar{B}}+\sqrt{P^B_-}\ket{1}_{\tilde{B}}\ket{1}_{\bar{B}},
     \end{align*}
     the sifting phase is defined by the projector
     \[\Pi=\ket{0}\bra{0}_{\tilde{A}}\otimes\ket{0}\bra{0}_{\tilde{B}}+\ket{1}\bra{1}_{\tilde{A}}\otimes\ket{1}\bra{1}_{\tilde{B}}\]
     and the key map is 
     \[V=\ket{0}_R\ket{0}\bra{0}_{\bar{A}}+\ket{1}_R\ket{1}\bra{1}_{\bar{A}}\]
-    and identity acting on the other subsystems.
+    with identity acting on the other subsystems.
     These operators define the \(G\) map and the problem is completely set.
 
     If the choice of these Kraus operators, sifting and isometry is standard, as in this case, calling the python class \textrm{QKD} will create all the structure described above
     \begin{lstlisting}[style=python]
-        from src import qkd
-        import numpy as np
-        # ...
-        sim = qkd.QKD(da=2, db=2, nst=4, # dim A, # dim b, # of signal states
-            [qkd.zero, qkd.one, qkd.plus, qkd.minus], [0.25, 0.25, 0.25, 0.25], # A states and prob
-            [qkd.zero, qkd.one, qkd.plus, qkd.minus], [0.25, 0.25, 0.25, 0.25]) # B states and prob\end{lstlisting}
+from src import qkd
+import numpy as np
+sim = qkd.QKD(dim_a=2, dim_b=2, n_of_signal_states=4, # of signal states
+    list_states_a=[qkd.zero, qkd.one, qkd.plus, qkd.minus], list_of_prob_a=[.25,.25,.25,.25],
+    list_states_b=[qkd.zero, qkd.one, qkd.plus, qkd.minus], list_states_b=[.25,.25,.25,.25])\end{lstlisting}
     Then, Eve presence in the communication is quantified by the quantum bit error rate \(Q\) (QBER) by means of the depolarization \(p=2\cdot Q\) using \eqref{eqn:depolarizing-channel}
     \begin{lstlisting}[style=python]
-        qber, key_primal, key_dual, key_th = [0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.12], [], [], []
-        for ii in qber:
-            # for theorical curve and leak^{EC}
-            hp = qkd.binary_entropy(ii) 
+qber, key_primal, key_dual, key_th = np.linspace(0., .12, 15), [], [], []
+for ii in qber:
+    # for theorical curve and leak^{EC}
+    hp = qkd.binary_entropy(ii) 
 
-            # apply quantum channel
-            sim.apply_quantum_channel(qkd.depolarizing_channel(2*ii))
+    # apply quantum channel
+    sim.apply_quantum_channel(qkd.depolarizing_channel(2*ii))
 
-            gamma = []
-            for jj in sim.povm: # get AB povm from QKD
-                gamma.append(np.trace(jj @ sim.rho_ab)) # rho_AB is authomatically calculated by QKD
+    gamma = []
+    for jj in sim.povm: # get AB povm from QKD
+        gamma.append(np.trace(jj @ sim.rho_ab)) # rho_AB is authomatically calculated by QKD
 
-            # set contraints
-            sim.set_constraints(gamma, sim.povm)
+    # set contraints
+    sim.set_constraints(gamma, sim.povm)
 
-            # compute 
-            sim.compute_primal()
-            sim.compute_dual()
+    # compute 
+    sim.compute_primal(epsilon=1e-11, maxit=50, finesse=100, "MOSEK") # finesse=finesse of the interval for \lambda\in[0,1] 
+    sim.compute_dual("MOSEK")
 
-            # getting result
-            key_th     = 1 - hp - hp # hp is the leak from error correction
-            key_primal = sim.primal_sol - hp # hp is the leak from error correction
-            key_dual   = sim.dual_sol - hp # hp is the leak from error correction \end{lstlisting}
+    # getting result
+    key_th     = 1 - hp - hp # hp is the leak from error correction
+    key_primal = sim.primal_sol - hp # hp is the leak from error correction
+    key_dual   = sim.dual_sol - hp # hp is the leak from error correction \end{lstlisting}
 
-    \subsection{EB BB84 with efficiency mismatch on detectors}
-        In this case 
+    \subsection{EB BB84 with efficiency mismatch on Bob's detectors}
+        Consider the previous system with efficiency mismatch between the detection of bit 0 and 1 at Bob side.
+        To treat the no-click event, the Hilbert space of system \(B\) must contain also the no-click event so \(dim \mathcal{H}_B=3\);
+        For this reason, if \(\eta\) is the efficiency of the detector, Bob POVM become 
+        \\
+        \begin{minipage}{.5\linewidth}
+            \begin{align*}
+                P^B_1 =& p_z \ket{0}\bra{0}_B\oplus 0,\\
+                P^B_2 =& p_z\eta \ket{1}\bra{1}_B\oplus 0,\\
+                P^B_3 =& (1-p_z) \ket{+}\bra{+}_B\oplus 0,
+            \end{align*}
+        \end{minipage}
+        \begin{minipage}{.5\linewidth}
+            \begin{align*}                
+                P^B_4 =& (1-p_z)\eta \ket{-}\bra{-}_B\oplus 0,\\
+                P^B_5 =& \mathbb{I}_B - \sum_{i=1}^4P^B_i, \text{ where 0 indicates the no-click event,}                
+            \end{align*}
+        \end{minipage}
+        \\
+        while Alice POVM remains unchanged with respect to the previous case.
 
+        In the public string announcement, Bob's announcement Kraus representation is 
+        \[ K^B_1 = \sqrt{P^B_1}\ket{0}_{\tilde{B}}\ket{0}_{\bar{B}} + \sqrt{P^B_2}\ket{0}_{\tilde{B}}\ket{1}_{\bar{B}}, \quad K^B_2 = \sqrt{P^B_3}\ket{1}_{\tilde{B}}\ket{0}_{\bar{B}} + \sqrt{P^B_4}\ket{1}_{\tilde{B}}\ket{1}_{\bar{B}}, \quad K^B_3 = \sqrt{P^B_5}\ket{2}_{\tilde{B}}\ket{0}_{\bar{B}}. \]
+        With opportune adjustments, the sifting phase and the key map have the same structure as the standard BB84 simulation, so the \(G\) map can be defined inside \textrm{QKD} class.
+        Depolarizing channel is also adapted to the 3-dimensional Hilbert space using the Kraus representation \cite{Ramzan_2011}
+        \\
+        \begin{center}
+            \begin{tabular}{ccc}
+                \(E_1=\sqrt{1-p}\cdot \mathbb{I}_B\) & 
+                \(E_2=\sqrt{p/8}\cdot Y\) & 
+                \(E_3=\sqrt{p/8}\cdot Z\)\\
+                \(E_4=\sqrt{p/8}\cdot Y^2\) & 
+                \(E_5=\sqrt{p/8}\cdot YZ\) & 
+               \( E_6=\sqrt{p/8}\cdot Y^2Z\)\\
+                \(E_7=\sqrt{p/8}\cdot YZ^2\) & 
+                \(E_8=\sqrt{p/8}\cdot Y^2Z^2\) & 
+                \(E_9=\sqrt{p/8}\cdot Z^2\)
+            \end{tabular}
+        \end{center}
+        where 
+        \[
+            Y = \left(\begin{matrix}
+                0 & 1 & 0 \\ 
+                0 & 0 & 1 \\ 
+                1 & 0 & 0 \\ 
+            \end{matrix}\right), \quad
+            Z = \left(\begin{matrix}
+                1 & 0 & 0 \\ 
+                0 & \omega & 0 \\ 
+                0 & 0 & \omega^2 \\ 
+            \end{matrix}\right),\quad \omega=e^{2\pi i/3}.
+        \]
+        
+        The code is then        
+        \begin{lstlisting}[style=python]
+from src import qkd
+# define states
+states = [qkd.zero, qkd.one, qkd.plus, qkd.minus]
 
+# with null clicks event
+states_b = [np.append(i, [0]) for i in states]
+
+# ... iteration over efficiencies
+for depolarizing_prob in [0., .05, .1]:
+    # iteration
+    for efficiency in np.linspace(0.,1.,15):
+        # ... definition of POVMB, KB, sifting and key_map
+        # new simulation
+        sim = qkd.QKD(dim_a=2, dim_b=3, n_of_singla_states=4,
+            list_states_a=states, list_of_prob_a=[.25,.25,.25,.25],
+            list_states_a=states_b, list_of_prob_a=[.25,.25,.25,.25],
+            povm_b        =POVMB,
+            kraus_b       =KB,
+            sifting_phase =sifting,
+            key_map       =V,
+            announcement_register_b=[[1,0,0], [0,1,0], [0,0,1]])
+        # apply quantum channel
+        sim.apply_quantum_channel(qkd.depolarizing_channel(depolarizing_prob, 3))#dimension=3
+
+        # compute primal and dual problem
+        sim.compute_primal(1e-11, 1000, 20,solver_name="MOSEK")
+        sim.compute_dual(solver_name="MOSEK")\end{lstlisting}
 
 \section{Results}
+ \phantomsection
  \subsection{Standard BB84}
+    In table \ref{tbl:std-bb84} are reported the specific of time duration, primal problem result, dual problem result, precision (difference between primal and dual result) and tightness (difference between dual result and theoretical value).
+    Looking at the table the precision and the tightness are well below the part per thousand.
+    
+    In figure are represent the result of each step and the theoretical value of the secret key rate for the standard BB84.    
+    \begin{figure}[h!]
+        \centering
+        \includegraphics[scale=0.4]{analysis/EB_standard_bb84.png}
+        \caption{Standard BB84 secret key rate lower bound.}
+    \end{figure}
+
+ \begin{table}[h!]
+    \centering
+    \begin{tabular}{c|c|c|c|c|c|c}
+        QBER & CPU time[s]& theoretical& primal& dual& precision& tightness\\
+        \hline
+        0.000 & 43.469 & 1.000 & 1.000 & 1.000 & 3.04e-09 & 3.04e-09\\
+        0.008 & 28.991 & 0,928 & 0.928 & 0.928 & 3.09e-07 & 3.10e-07\\
+        0.017 & 28.492 & 0,874 & 0.874 & 0.874 & 7.61e-04 & 7.58e-04\\
+        0.025 & 43.003 & 0,827 & 0.827 & 0.827 & 1.69e-04 & 1.69e-04\\
+        0.034 & 28.564 & 0,784 & 0.784 & 0.784 & 1.28e-06 & 1.28e-06\\
+        0.042 & 28.795 & 0,744 & 0.744 & 0.743 & 9.33e-04 & 9.28e-04\\
+        0.051 & 42.643 & 0,707 & 0.707 & 0.707 & 3.47e-04 & 3.47e-04\\
+        0.060 & 41.923 & 0,672 & 0.672 & 0.672 & 2.30e-06 & 2.30e-06\\
+        0.068 & 28.265 & 0,639 & 0.639 & 0.639 & 2.66e-06 & 2.66e-06\\
+        0.077 & 29.915 & 0,607 & 0.607 & 0.607 & 5.36e-04 & 5.34e-04\\
+        0.085 & 42.638 & 0,577 & 0.577 & 0.577 & 5.24e-06 & 5.22e-06\\
+        0.094 & 28.698 & 0,549 & 0.549 & 0.549 & 1.03e-04 & 1.03e-04\\
+        0.102 & 29.094 & 0,522 & 0.522 & 0.521 & 7.35e-04 & 7.32e-04\\
+        0.111 & 44.381 & 0,495 & 0.495 & 0.495 & 1.26e-04 & 1.26e-04\\
+        0.120 & 44.381 & 0,470 & 0.470 & 0.470 & 4.92e-06 & 4.92e-06\\
+        \hline
+    \end{tabular}
+    \caption{exiting results from each simulation step}
+    \label{tbl:std-bb84}
+ \end{table}
 
  \subsection{Efficiency mismatch}
+ In the tables \ref{tbl:p-0}, \ref{tbl:p-005} and \ref{tbl:p-01} are reported the results for each value of the efficiency \(\eta\) for depolarization probability of the quantum channel \(p=0,0.05,0.1\).
 
- \subsection{Trojan-horse attack}
+ The figure represents the values of the dual problem solution which is the reliable lower bound for the secret key rate.
+
+The calculations of precision (difference between primal and dual problem solution) for all depolarization probabilities \(p=0,0.05,0.1\) are below the part per billion.
+ \\
+ \begin{minipage}{0.5\linewidth}
+    \centering
+    \begin{tabular}{c|c|c|c|c}
+        Efficiency & CPU time [s]& primal& dual& precision\\
+        \hline
+        0.000 & 73.824  & 0.045 & 0.045 & 8.55e-09 \\
+        0.071 & 272.240 & 0.368 & 0.368 & 4.37e-09 \\
+        0.142 & 136.864 & 0.552 & 0.552 & 3.96e-09 \\
+        0.214 & 71.155  & 0.677 & 0.677 & 1.91e-08 \\
+        0.285 & 167.272 & 0.767 & 0.767 & 9.30e-09 \\
+        0.357 & 223.856 & 0.833 & 0.833 & 1.12e-08 \\
+        0.428 & 288.619 & 0.882 & 0.882 & 3.49e-08 \\
+        0.500 & 238.178 & 0.918 & 0.918 & 7.22e-09 \\
+        0.571 & 244.388 & 0.945 & 0.945 & 9.03e-09 \\
+        0.642 & 170.951 & 0.965 & 0.965 & 1.28e-09 \\
+        0.714 & 175.240 & 0.979 & 0.979 & 5.97e-08 \\
+        0.785 & 596.072 & 0.989 & 0.989 & 7.65e-09 \\
+        0.857 & 187.316 & 0.995 & 0.995 & 1.71e-08 \\
+        0.928 & 192.420 & 0.998 & 0.998 & 4.32e-09 \\
+        1.000 & 457.271 & 0.999 & 0.999 & 8.38e-08 \\
+        \hline
+    \end{tabular}
+    \captionof{table}{depolarization probability \(p=0\)} 
+    \label{tbl:p-0}
+\end{minipage}
+\begin{minipage}{0.5\linewidth}
+    \centering
+    \begin{tabular}{c|c|c|c|c}
+        Efficiency & CPU time [s]& primal& dual& precision\\
+        \hline
+        0.000 & 265.325 & 0.040 & 0.040 & 9.85e-07 \\
+        0.071 & 245.214 & 0.323 & 0.323 & 2.17e-07 \\
+        0.142 & 205.293 & 0.481 & 0.481 & 1.04e-07 \\
+        0.214 & 203.671 & 0.589 & 0.589 & 2.77e-07 \\
+        0.285 & 217.498 & 0.666 & 0.666 & 1.85e-07 \\
+        0.357 & 234.874 & 0.722 & 0.722 & 3.35e-07 \\
+        0.428 & 229.832 & 0.763 & 0.763 & 1.27e-06 \\
+        0.500 & 244.347 & 0.794 & 0.794 & 5.20e-07 \\
+        0.571 & 220.040 & 0.817 & 0.817 & 2.64e-07 \\
+        0.642 & 206.758 & 0.834 & 0.834 & 2.76e-07 \\
+        0.714 & 203.992 & 0.846 & 0.846 & 7.54e-07 \\
+        0.785 & 214.197 & 0.854 & 0.854 & 6.43e-07 \\
+        0.857 & 211.922 & 0.859 & 0.859 & 5.35e-07 \\
+        0.928 & 211.338 & 0.862 & 0.862 & 1.80e-06 \\
+        1.000 & 210.020 & 0.863 & 0.863 & 3.46e-07 \\
+        \hline
+    \end{tabular}
+    \captionof{table}{depolarization probability \(p=0.05\)} 
+    \label{tbl:p-005}
+\end{minipage}
+\\
+ \begin{minipage}{\linewidth}
+    \centering
+    \begin{tabular}{c|c|c|c|c}
+        Efficiency & CPU time [s]& primal& dual& precision\\
+        \hline
+        0.000 & 212.277 & 0.036 & 0.036 & 3.87e-08 \\
+        0.071 & 212.460 & 0.287 & 0.287 & 1.19e-06 \\
+        0.142 & 209.758 & 0.427 & 0.427 & 3.61e-06 \\
+        0.214 & 211.222 & 0.522 & 0.522 & 1.04e-06 \\
+        0.285 & 210.727 & 0.589 & 0.589 & 1.30e-06 \\
+        0.357 & 210.353 & 0.638 & 0.638 & 1.50e-06 \\
+        0.428 & 208.802 & 0.675 & 0.675 & 1.68e-06 \\
+        0.500 & 209.674 & 0.702 & 0.702 & 2.68e-06 \\
+        0.571 & 208.272 & 0.722 & 0.722 & 4.37e-06 \\
+        0.642 & 208.197 & 0.737 & 0.737 & 5.96e-06 \\
+        0.714 & 209.123 & 0.747 & 0.747 & 3.79e-06 \\
+        0.785 & 212.709 & 0.754 & 0.754 & 3.07e-06 \\
+        0.857 & 212.752 & 0.759 & 0.759 & 6.16e-06 \\
+        0.928 & 217.413 & 0.761 & 0.761 & 5.01e-06 \\
+        1.000 & 280.391 & 0.762 & 0.762 & 1.73e-05 \\ 
+        \hline
+    \end{tabular}
+    \captionof{table}{depolarization probability \(p=0.1\)} 
+    \label{tbl:p-01}
+\end{minipage}
+ \begin{figure}
+     \centering
+     \includegraphics[scale=0.35]{analysis/eff_mis_bb84_20_11.png}
+     \caption{figure}{secret key rate changing the efficiency in \([0,1]\) for three possible depolarization probabilities \(p=0,0.05,0.1\).}
+ \end{figure}
+
+%  \subsection{Trojan-horse attack}
 
 \section{Self-evaluation}
+The standard BB84 simulation is in complete accordance with the theoretical curve and with over one part per thousand precision.
+
+Efficiency mismatch simulation confirms the robustness of the algorithm providing a 
 
 \bibliography{bibliography/bibliography}
 

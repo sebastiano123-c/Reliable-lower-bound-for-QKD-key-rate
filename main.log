@@ -1,4 +1,4 @@
-This is LuaHBTeX, Version 1.14.0 (MiKTeX 21.7) (format=lualatex 2021.7.26)  11 OCT 2021 23:54
+This is LuaHBTeX, Version 1.14.0 (MiKTeX 21.7) (format=lualatex 2021.7.26)  12 OCT 2021 21:10
  restricted system commands enabled.
  file:line:error style messages enabled.
 **c:/Univ/Magistrale/Tesi/simulazione/main.tex
@@ -1446,14 +1446,6 @@ Document Style - pseudocode environments for use with the `algorithmicx' style
 sty
 File: lstlang1.sty 2020/03/24 1.8d listings language file
 )
-(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/listings/lstlang1.
-sty
-File: lstlang1.sty 2020/03/24 1.8d listings language file
-)
-(C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/listings/lstlang1.
-sty
-File: lstlang1.sty 2020/03/24 1.8d listings language file
-)
 \c@theorem=\count342
 LaTeX Font Info:    Trying to load font information for T1+jkp on input line 11
 6.
@@ -1653,33 +1645,93 @@ Underfull \hbox (badness 10000) in paragraph at lines 227--233
 [3]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
 put line 272.
- [4]
+
+Overfull \hbox (1.93999pt too wide) in paragraph at lines 324--345
+[]$ $[]$ 
+ []
+
+[4]
 LaTeX Font Info:    Trying to load font information for T1+jkptt on input line 
-336.
+357.
 
 (C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/latex/kpfonts/t1jkptt.fd
 File: t1jkptt.fd 2007/01/26 Fontinst v1.928 font definitions for T1/jkptt.
 )
+Overfull \hbox (1.93999pt too wide) in paragraph at lines 390--409
+[]$ $[]$ 
+ []
 
-Package hyperref Warning: The anchor of a bookmark and its parent's must not
-(hyperref)                be the same. Added a new anchor on input line 375.
+[5]
+Underfull \hbox (badness 10000) in paragraph at lines 411--415
 
-(./main.bbl [5]) [6] (./main.aux)
+ []
+
+<analysis/EB_standard_bb84.png, id=178, 1233.6489pt x 619.3539pt>
+File: analysis/EB_standard_bb84.png Graphic file (type png)
+<use analysis/EB_standard_bb84.png>
+Package luatex.def Info: analysis/EB_standard_bb84.png  used on input line 481.
+
+(luatex.def)             Requested size: 493.45082pt x 247.73717pt.
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[6]
+
+Package caption Warning: The option `hypcap=true' will be ignored for this
+(caption)                particular \caption on input line 540.
+See the caption package documentation for explanation.
+
+
+Overfull \hbox (1.7548pt too wide) in paragraph at lines 520--540
+ [][] 
+ []
+
+
+Package caption Warning: The option `hypcap=true' will be ignored for this
+(caption)                particular \caption on input line 565.
+See the caption package documentation for explanation.
+
+
+Overfull \hbox (1.7548pt too wide) in paragraph at lines 545--565
+ [][] 
+ []
+
+
+Package caption Warning: The option `hypcap=true' will be ignored for this
+(caption)                particular \caption on input line 591.
+See the caption package documentation for explanation.
+
+<analysis/eff_mis_bb84_20_11.png, id=216, 1233.6489pt x 619.3539pt>
+File: analysis/eff_mis_bb84_20_11.png Graphic file (type png)
+<use analysis/eff_mis_bb84_20_11.png>
+Package luatex.def Info: analysis/eff_mis_bb84_20_11.png  used on input line 59
+6.
+(luatex.def)             Requested size: 431.78358pt x 216.77711pt.
+
+Overfull \hbox (1.93999pt too wide) in paragraph at lines 516--599
+[]$ $[]$ 
+ []
+
+[7<./analysis/EB_standard_bb84.png>] [8<./analysis/eff_mis_bb84_20_11.png>]
+(./main.bbl) [9] (./main.aux)
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 01B4FCF2C78EE5AB24FCEDEE66E1EB68;1934.
+(rerunfilecheck)             Checksum: 38CB9DB9878724D842A91CE59037D386;1820.
 )
 
 Here is how much of LuaTeX's memory you used:
- 32864 strings out of 478089
- 476984,1373583 words of node,token memory allocated
- 1592 words of node memory still in use:
-   7 hlist, 2 vlist, 2 rule, 2 glue, 119 kern, 3 sub_mlist, 1 glyph, 115 attribu
-te, 66 glue_spec, 115 attribute_list, 2 write, 1 pdf_action nodes
-   avail lists: 1:14,2:6854,3:388,4:9030,5:8648,6:100,7:16993,8:81,9:25609,10:50
-,11:1511
- 51658 multiletter control sequences out of 65536+600000
- 161 fonts using 11976935 bytes
- 98i,12n,129p,482b,1104s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 32930 strings out of 478089
+ 381585,1373583 words of node,token memory allocated
+ 1891 words of node memory still in use:
+   7 hlist, 2 vlist, 2 rule, 2 glue, 158 kern, 3 sub_mlist, 1 glyph, 141 attribu
+te, 66 glue_spec, 141 attribute_list, 2 write, 1 pdf_action nodes
+   avail lists: 1:13,2:5260,3:386,4:6544,5:6253,6:103,7:16073,8:77,9:18663,10:39
+,11:1129
+ 51681 multiletter control sequences out of 65536+600000
+ 167 fonts using 12422679 bytes
+ 98i,12n,101p,482b,1097s stack positions out of 5000i,500n,10000p,200000b,80000s
 {C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}{
 C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/kpfonts/kpfont
 s-expert.enc}<C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fonts/type1/publ
@@ -1697,9 +1749,9 @@ ublic/kpfonts/jkpmsc8a.pfb><C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/fo
 nts/type1/public/kpfonts/jkpsy.pfb><C:/Users/sebastiano/AppData/Local/Programs/M
 iKTeX/fonts/type1/public/kpfonts/jkpsyb.pfb><C:/Users/sebastiano/AppData/Local/P
 rograms/MiKTeX/fonts/type1/public/kpfonts/jkpttmn8a.pfb>
-Output written on main.pdf (6 pages, 170760 bytes).
+Output written on main.pdf (9 pages, 310207 bytes).
 
-PDF statistics: 234 PDF objects out of 1000 (max. 8388607)
- 75 named destinations out of 1000 (max. 131072)
- 120 words of extra memory for PDF output out of 10000 (max. 100000000)
+PDF statistics: 294 PDF objects out of 1000 (max. 8388607)
+ 112 named destinations out of 1000 (max. 131072)
+ 112 words of extra memory for PDF output out of 10000 (max. 100000000)
 
