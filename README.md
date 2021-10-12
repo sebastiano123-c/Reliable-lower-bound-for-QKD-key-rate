@@ -1,8 +1,9 @@
 <p align="center">
 <img src="https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg" width="200" height="200" alt="In this repo we use neither 'therefore' nor 'furthermore'"/>
+</p>
+<p align="center">
 In this repo we use neither 'therefore' nor 'furthermore'
 </p>
-
 
 # Simulation: reliable lower bound for QKD protocols key rates
 This repo contains Python and Fortran 90 code to perform a reliable lower bound for QKD key rate using convex optimization.
