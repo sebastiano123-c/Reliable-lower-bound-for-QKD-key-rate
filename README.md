@@ -5,25 +5,27 @@
 In this repo we use neither 'therefore' nor 'furthermore'
 </p>
 
-# Simulation: reliable lower bound for QKD protocols key rates
+# Reliable lower bound for QKD key rate
 This repo contains Python and Fortran 90 code to perform a reliable lower bound for QKD key rate using convex optimization.
-The convex optimization is a semidefinite program (SDP), I recommend using 'MOSEK' solver (it requires a license you can find [here](https://www.mosek.com/products/academic-licenses/)).
-It is ok to use 'CVXOPT' instead, but it crashes quite often.
-
-Theory is briefly explained in the [documentation](https://github.com/sebastiano123-c/simulazione/blob/master/main.pdf).
-
-References:
- - https://doi.org/10.22331/q-2018-07-26-77
- - https://doi.org/10.1103/PhysRevResearch.3.013274
 
 ## Installation
-
 Clone this [repo](https://github.com/sebastiano123-c/simulazione)
 ```bash
 git clone git@github.com:sebastiano123-c/simulazione.git
 ```
 
+## Theory
+Theory is briefly explained in the [documentation](https://github.com/sebastiano123-c/simulazione/blob/master/main.pdf).
+
+More references:
+ - https://doi.org/10.22331/q-2018-07-26-77
+ - https://doi.org/10.1103/PhysRevResearch.3.013274
+
+
 ## Python Usage
+Requires 'MOSEK' solver (under license,  you can find it [here](https://www.mosek.com/products/academic-licenses/))
+It is ok to use 'CVXOPT' instead, but it crashes quite often.
+
 ```python
 """
 simple EB BB84 protocol
