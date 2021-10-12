@@ -120,10 +120,14 @@
 \begin{abstract}                % ~350 words max
     Following \cite{George_2021} and \cite{Winick2018reliablenumerical} papers, a key rate reliable lower bound for the standard four states BB84 protocol is calculated in condition of:
     \begin{enumerate}
-        \item standard depolarizing channel;
+        \item depolarizing channel;
         % \item Trojan-horse attack (THA);
         \item efficiency mismatch at receiver detectors.
     \end{enumerate}
+    % The BB84 protocol is transposed into an EB protocol using the source replacement scheme.
+    The simulation includes the announcement of the bases between A and B, the sifting phase and a key map that stores the choice of the bases of \(A\) and \(B\) in a classic register.
+    The goal of the simulation is to minimize the relative entropy using a semidefinite program (SDP) before and after the application of a pinching channel.
+    The result is a lower bound for the key rate.
 \end{abstract}
 
 \tableofcontents
@@ -235,7 +239,7 @@ Classical channel is public and authenticated, so Alice and Bob recognize each o
         \label{eqn:relative-entropy-simple}
     \end{equation}
 
-    \subsection{Reliable lower bound}
+    \subsection{Reliable lower bound}   
     The function to be minimized is the relative entropy \(D(\rho||\sigma)\) (also called Kullback–Leibler divergence), which is a measure of how one probability distribution is different from a second.
     In particular, the simulation consider the divergence
     \begin{equation}
@@ -262,7 +266,23 @@ Classical channel is public and authenticated, so Alice and Bob recognize each o
     Quantum relative entropy is a convex function, thus \(f(\rho)\) is a convex function in \(\rho\) and can be minimized using a semidefinite program (SDP).
     Due to computer imprecision, the algorithm may exit before reaching the true lower bound.
     Thus, the problem is converted to its dual in order to find the upper bound.
-    Then, a strategy can be split the algorithm into two steps:
+    Then, a strategy can be split the algorithm into two steps: a primal problem and a dual problem.
+    The primal problem with \(m\) variables is defined as
+    \begin{equation}
+        \begin{aligned}
+            \min_{X\in S^m}   :& \langle C,X\rangle_{S^m}\\
+            \text{subject to}:& \langle A_i,X\rangle_{S^n}=b_i, \quad i=1,\ldots,m\\
+                         &X\succeq 0.
+        \end{aligned}
+    \end{equation}       
+    The dual of this problem is
+    \begin{equation}
+        \begin{aligned}
+            \max_{y\in\mathbb{R}^n}:& \sum_i b_i y_i \\
+            \text{subject to} :& \sum_i A_i y_i \preceq C.
+        \end{aligned}
+    \end{equation}
+    These two steps have two different scopes:
     \begin{enumerate}
         \item[step 1]: estimation of the optimal attack Eve can apply to the qubits which gives an upper bound on the key rate;
         \item[step 2]: study the inverse problem finding the upper bound.
@@ -512,7 +532,11 @@ for depolarizing_prob in [0., .05, .1]:
  In the tables \ref{tbl:p-0}, \ref{tbl:p-005} and \ref{tbl:p-01} are reported the results for each value of the efficiency \(\eta\) for depolarization probability of the quantum channel \(p=0,0.05,0.1\).
 
  The figure represents the values of the dual problem solution which is the reliable lower bound for the secret key rate.
-
+ \begin{figure}[h!]
+    \centering
+    \includegraphics[scale=0.35]{analysis/eff_mis_bb84_20_11.png}
+    \caption{figure}{secret key rate changing the efficiency in \([0,1]\) for three possible depolarization probabilities \(p=0,0.05,0.1\).}
+\end{figure}
 The calculations of precision (difference between primal and dual problem solution) for all depolarization probabilities \(p=0,0.05,0.1\) are below the part per billion.
  \\
  \begin{minipage}{0.5\linewidth}
@@ -591,18 +615,13 @@ The calculations of precision (difference between primal and dual problem soluti
     \captionof{table}{depolarization probability \(p=0.1\)} 
     \label{tbl:p-01}
 \end{minipage}
- \begin{figure}
-     \centering
-     \includegraphics[scale=0.35]{analysis/eff_mis_bb84_20_11.png}
-     \caption{figure}{secret key rate changing the efficiency in \([0,1]\) for three possible depolarization probabilities \(p=0,0.05,0.1\).}
- \end{figure}
 
 %  \subsection{Trojan-horse attack}
 
 \section{Self-evaluation}
 The standard BB84 simulation is in complete accordance with the theoretical curve and with over one part per thousand precision.
 
-Efficiency mismatch simulation confirms the robustness of the algorithm providing a 
+Efficiency mismatch simulation confirms the precision of the algorithm far over one part per billion.
 
 \bibliography{bibliography/bibliography}
 

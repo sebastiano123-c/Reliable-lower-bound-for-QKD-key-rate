@@ -1,12 +1,12 @@
 # Fdb version 3
-["bibtex main"] 1634065185 "main.aux" "main.bbl" "main" 1634065887
+["bibtex main"] 1634070307 "main.aux" "main.bbl" "main" 1634070349
   "C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/bibtex/bst/dinat/dinat.bst" 974264347 44478 8171722d387d8657f0397923511dcd08 ""
   "bibliography/bibliography.bib" 1634060166 1922 6999c10f728e99fd2d7068e4cd9b54d7 ""
-  "main.aux" 1634065844 4727 f558d22f468f68a21948cf8da123c914 "lualatex"
+  "main.aux" 1634070347 4727 c5201c657fb420409bcfed7cb44a17c1 "lualatex"
   (generated)
-  "main.bbl"
   "main.blg"
-["lualatex"] 1634065840 "c:/Univ/Magistrale/Tesi/simulazione/main.tex" "main.pdf" "main" 1634065887
+  "main.bbl"
+["lualatex"] 1634070341 "c:/Univ/Magistrale/Tesi/simulazione/main.tex" "main.pdf" "main" 1634070349
   "C:/Users/sebastiano/AppData/Local/MiKTeX/luatex-cache/generic/fonts/otl/lmroman10-regular.luc" 1625432114 123153 e66d64453c8508d2a3e7eb1c5fa54fa1 ""
   "C:/Users/sebastiano/AppData/Local/MiKTeX/luatex-cache/generic/names/luaotfload-names.luc" 1625435082 192388 d03b62f0d59214d852b6745461bb8f10 ""
   "C:/Users/sebastiano/AppData/Local/MiKTeX/pdftex/config/pdftex.map" 1633954679 95607 034e0737ccfe37fc78b0169eb44187f4 ""
@@ -402,22 +402,22 @@
   "C:/Users/sebastiano/AppData/Local/Programs/MiKTeX/tex/luatex/luatexbase/luatexbase.sty" 1443949118 10170 b1a2248f43cab899e3fe36f676176865 ""
   "analysis/EB_standard_bb84.png" 1634065802 51379 daf3b3949f9825db5ca375e88c6c2a89 ""
   "analysis/eff_mis_bb84_20_11.png" 1634065069 69544 9b914733104980d394b927f179a606fe ""
-  "c:/Univ/Magistrale/Tesi/simulazione/main.tex" 1634065885 32164 13ee4ca8b2e9d9ac5f3ef12e3ae7ea54 ""
-  "main.aux" 1634065844 4727 f558d22f468f68a21948cf8da123c914 "lualatex"
-  "main.bbl" 1634065186 2199 292b3f6b42fd8df8f68724bc384f06a2 "bibtex main"
-  "main.ind" 1634062528 0 d41d8cd98f00b204e9800998ecf8427e "makeindex main.idx"
-  "main.out" 1634065844 1820 38cb9db9878724d842a91ce59037d386 "lualatex"
-  "main.tex" 1634065885 32164 13ee4ca8b2e9d9ac5f3ef12e3ae7ea54 ""
-  "main.toc" 1634065844 823 7513c3b928acd45199d8fa595b35d98c "lualatex"
+  "c:/Univ/Magistrale/Tesi/simulazione/main.tex" 1634070339 33332 60ff627d944851fe7dc1eff738179c00 ""
+  "main.aux" 1634070347 4727 c5201c657fb420409bcfed7cb44a17c1 "lualatex"
+  "main.bbl" 1634070307 2199 292b3f6b42fd8df8f68724bc384f06a2 "bibtex main"
+  "main.ind" 1634069429 0 d41d8cd98f00b204e9800998ecf8427e "makeindex main.idx"
+  "main.out" 1634070347 1820 38cb9db9878724d842a91ce59037d386 "lualatex"
+  "main.tex" 1634070339 33332 60ff627d944851fe7dc1eff738179c00 ""
+  "main.toc" 1634070347 823 552d7d4ef87c5d3424ec30d89cd5f65b "lualatex"
   (generated)
-  "main.pdf"
-  "main.toc"
   "main.aux"
+  "main.toc"
   "main.out"
-  "main.log"
   "main.idx"
-["makeindex main.idx"] 1634062528 "main.idx" "main.ind" "main" 1634065887
-  "main.idx" 1634065842 0 d41d8cd98f00b204e9800998ecf8427e "lualatex"
+  "main.log"
+  "main.pdf"
+["makeindex main.idx"] 1634069429 "main.idx" "main.ind" "main" 1634070349
+  "main.idx" 1634070345 0 d41d8cd98f00b204e9800998ecf8427e "lualatex"
   (generated)
   "main.ilg"
   "main.ind"
