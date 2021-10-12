@@ -1,4 +1,7 @@
+<p align="center">
 <img src="https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg" width="200" height="200" alt="In this repo we use neither 'therefore' nor 'furthermore'"/>
+In this repo we use neither 'therefore' nor 'furthermore'
+</p>
 
 
 # Simulation: reliable lower bound for QKD protocols key rates
