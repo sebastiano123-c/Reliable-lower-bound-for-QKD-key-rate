@@ -1,4 +1,5 @@
 __pychace__
+/__pychace__
 analysis
 bibliography
 /src/DUALSIMP_MOD.f90
@@ -38,3 +39,6 @@ bibliography
 /EB_simple_BB84.py
 /PeM_trojan_horse_BB84.py
 /main_simple_BB84.py
+/simple_BB84.exe
+/main.exe
+/main.py

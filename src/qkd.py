@@ -1,4 +1,6 @@
 """
+QKD class
+
 @author: Sebastiano Cocchi
 """
 import numpy as np
