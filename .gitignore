@@ -1,6 +1,6 @@
 __pychace__
-/analysis
-/bibliography
+analysis
+bibliography
 /src/DUALSIMP_MOD.f90
 /src/dualsimp_mod.mod
 /src/minimization.f90
@@ -16,6 +16,7 @@ __pychace__
 /main.ilg
 /main.ind
 /main.log
+/main_simple_BB84.py
 /main.out
 /main.run.xml
 /main.synctex.gz
