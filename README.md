@@ -23,7 +23,7 @@ More references:
 
 
 ## Python Usage
-Requires 'MOSEK' solver (under license,  you can find it [here](https://www.mosek.com/products/academic-licenses/))
+Require 'MOSEK' solver (under license,  you can find it [here](https://www.mosek.com/products/academic-licenses/))
 It is ok to use 'CVXOPT' instead, but it crashes quite often.
 
 ```python
@@ -69,8 +69,11 @@ for ii in qber:
     key_dual.append(sim.primal_sol - hp)  
 ```
 
-## Fortran 90
-The simulation is also made in Fortran 90. 
+## Fortran 90 usage
+Requirements: lapack and blas.
+```bash
+gfortran main.f90 -o main.exe -Ofast -L'path-to-lapack-3.9.0/build/bin' -llapack -lblas
+```
 The files are main.f90 and simple_BB84.f90 which requires the modules (in 'src' directory):
  - debugging.f90, where are defined checkpoints and print functions;
  - matrices.f90, useful for matrices calculations (over all the tedious logarithm of a matrix)
