@@ -1,16 +1,24 @@
-<img src="/analysis/cane.png" alt="In this repo we don't use neither 'therefore' nor 'furthermore'"/>
+<img src="analysis/cane.png" alt="In this repo we don't use neither 'therefore' nor 'furthermore'"/>
 
 # Simulation: reliable lower bound for QKD protocols key rates
 This repo contains Python and Fortran 90 code to perform a reliable lower bound for QKD key rate using convex optimization.
 In particular the minimization is a semidefinite program (SDP)
 ```latex
-Primal problem is defined as
-minimize   : \langle C,X\rangle_{S^n}
-subject to : \langle A_i,X\rangle_{S^n}=b_i, \quad i=1,\ldots,m
-            X\succeq 0
-whose dual is 
-maximize   : \sum_i b_i y_i 
-subject to : \sum_i A_i y_i \preceq C.
+The primal problem with \(m\) variables is defined as
+    \begin{equation}
+        \begin{aligned}
+            \min_{X\in S^m}   :& \langle C,X\rangle_{S^m}\\
+            \text{subject to}:& \langle A_i,X\rangle_{S^n}=b_i, \quad i=1,\ldots,m\\
+                         &X\succeq 0.
+        \end{aligned}
+    \end{equation}       
+    The dual of this problem is
+    \begin{equation}
+        \begin{aligned}
+            \max_{y\in\mathbb{R}^n}:& \sum_i b_i y_i \\
+            \text{subject to} :& \sum_i A_i y_i \preceq C.
+        \end{aligned}
+    \end{equation}
 ```
 Theory is briefly written in main.pdf.
 More information here:
