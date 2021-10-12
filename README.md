@@ -1,35 +1,22 @@
-![In this repo we use neither 'therefore' nor 'furthermore'](https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg)
+![In this repo we use neither 'therefore' nor 'furthermore'](https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg=250x250)
 
 # Simulation: reliable lower bound for QKD protocols key rates
 This repo contains Python and Fortran 90 code to perform a reliable lower bound for QKD key rate using convex optimization.
-In particular the minimization is a semidefinite program (SDP)
-```latex
-The primal problem with \(m\) variables is defined as
-    \begin{equation}
-        \begin{aligned}
-            \min_{X\in S^m}   :& \langle C,X\rangle_{S^m}\\
-            \text{subject to}:& \langle A_i,X\rangle_{S^n}=b_i, \quad i=1,\ldots,m\\
-                         &X\succeq 0.
-        \end{aligned}
-    \end{equation}       
-    The dual of this problem is
-    \begin{equation}
-        \begin{aligned}
-            \max_{y\in\mathbb{R}^n}:& \sum_i b_i y_i \\
-            \text{subject to} :& \sum_i A_i y_i \preceq C.
-        \end{aligned}
-    \end{equation}
-```
-Theory is briefly written in main.pdf.
-More information here:
+The convex optimization is a semidefinite program (SDP), I recommend using 'MOSEK' solver (it requires a license you can find [here](https://www.mosek.com/products/academic-licenses/)).
+It is ok to use 'CVXOPT' instead, but it crashes quite often.
+
+Theory is briefly explained in the [documentation](https://github.com/sebastiano123-c/simulazione/blob/master/main.pdf).
+
+References:
  - https://doi.org/10.22331/q-2018-07-26-77
  - https://doi.org/10.1103/PhysRevResearch.3.013274
-The convex optimization, SDP solver, I recommend using 'MOSEK' solver (it requires a license you can find [here](https://www.mosek.com/products/academic-licenses/)).
-It is ok to use 'CVXOPT' instead, but it crashes quite often.
 
 ## Installation
 
-Clone this [repo](https://github.com/sebastiano123-c/simulazione).
+Clone this [repo](https://github.com/sebastiano123-c/simulazione)
+```bash
+git clone git@github.com:sebastiano123-c/simulazione.git
+```
 
 ## Python Usage
 ```python
