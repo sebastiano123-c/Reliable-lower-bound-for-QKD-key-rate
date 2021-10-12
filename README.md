@@ -1,4 +1,4 @@
-![In this repo we don't neither 'therefore' nor 'furthermore'](analysis/cane.jfif)
+![In this repo we don't neither 'therefore' nor 'furthermore'](analysis/cane.png)
 
 # Simulation: reliable lower bound for QKD protocols key rates
 This repo contains Python and Fortran 90 code to perform a reliable lower bound for QKD key rate using convex optimization.
