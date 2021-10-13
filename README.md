@@ -1,4 +1,4 @@
-<p align="center">
+<!-- <p align="center">
 <img src="https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg" width="200" height="200" alt="In this repo we use neither 'therefore' nor 'furthermore'"/>
 </p>
 <p align="center">
@@ -8,8 +8,38 @@ In this repo we use neither 'therefore' nor 'furthermore'
 # Reliable lower bound for QKD key rate
 This repo contains Python and Fortran 90 code to perform a reliable lower bound for QKD key rate using convex optimization.
 
+## Requirements
+<p align="center"><img src="https://img.shields.io/badge/python-3.8.7-green" /><img src="https://img.shields.io/badge/cvxpy-1.1.15-green" /><img src="https://img.shields.io/badge/scipy-1.7.1-green" /><img src="https://img.shields.io/badge/numpy-1.23.0-green" /><img src="https://img.shields.io/badge/matplotlib-3.4.3-green" /><br /><img src="https://img.shields.io/badge/fortran-90-purple" /><img src="https://img.shields.io/badge/gcc-9.2.0-purple" /><img src="https://img.shields.io/badge/lapack-3.9.0-purple" /><img src="https://img.shields.io/badge/blas-3.1.0-purple" /><img src="https://img.shields.io/badge/SDPA-7.3.9-purple" /></p> -->
+
+<p align="center">
+<img src="https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg" width="200" height="200" alt="In this repo we use neither 'therefore' nor 'furthermore'"/>
+</p>
+<p align="center">
+In this repo we use neither 'therefore' nor 'furthermore'
+</p>
+<h1  align="center" >Reliable lower bound for QKD key rate</h2>
+<p align="center">
+Python and Fortran 90 code to perform a reliable lower bound for QKD key rate using convex optimization.
+</p>
+
+<h2  align="center" >Requirements</h2>
+<p align="center">
+  <br/>
+  <img src="https://img.shields.io/badge/python-3.8.7-green" />
+  <img src="https://img.shields.io/badge/cvxpy-1.1.15-green" />
+  <img src="https://img.shields.io/badge/scipy-1.7.1-green" />
+  <img src="https://img.shields.io/badge/numpy-1.23.0-green" />
+  <img src="https://img.shields.io/badge/matplotlib-3.4.3-green" />
+  <br />
+  <img src="https://img.shields.io/badge/fortran-90-purple" />
+  <img src="https://img.shields.io/badge/gcc-9.2.0-purple" />
+  <img src="https://img.shields.io/badge/lapack-3.9.0-purple" />
+  <img src="https://img.shields.io/badge/blas-3.1.0-purple" />
+  <img src="https://img.shields.io/badge/SDPA-7.3.9-purple" />
+</p>
+
 ## Installation
-Clone this [repo](https://github.com/sebastiano123-c/simulazione)
+Clone this repo<!--  [repo](https://github.com/sebastiano123-c/simulazione) -->
 ```bash
 git clone git@github.com:sebastiano123-c/simulazione.git
 ```
