@@ -771,7 +771,7 @@ class QKD:
             self.primal_sol = np.real(relative_entropy( rho_4, rho_5 )) 
 
             # gradf(rho)**T = G**+ ( log[G(rho_i)] ) - G**+ ( log[Z(G(rho_i))] ) 
-            self.grad_f = (self.G_inverse_map( logm( rho_4 )/np.sqrt(2) ) - self.G_inverse_map( logm( rho_5 )/np.sqrt(2) ))
+            self.grad_f = (self.G_inverse_map( logm( rho_4 )/np.sqrt(2) - logm( rho_5 )/np.sqrt(2) ))
 
             # print iteration result
             print("iteration", counter, " f(rho) =", self.primal_sol)
