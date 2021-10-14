@@ -42,7 +42,7 @@ Python and Fortran 90 code to perform a reliable lower bound for QKD key rate us
 ## Installation
 Clone this repo<!--  [repo](https://github.com/sebastiano123-c/simulazione) -->
 ```bash
-git clone git@github.com:sebastiano123-c/simulazione.git
+git clone git@github.com:sebastiano123-c/Reliable-lower-bound-simulation.git
 ```
 
 ## Theory
