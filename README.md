@@ -12,7 +12,7 @@ This repo contains Python and Fortran 90 code to perform a reliable lower bound 
 <p align="center"><img src="https://img.shields.io/badge/python-3.8.7-green" /><img src="https://img.shields.io/badge/cvxpy-1.1.15-green" /><img src="https://img.shields.io/badge/scipy-1.7.1-green" /><img src="https://img.shields.io/badge/numpy-1.23.0-green" /><img src="https://img.shields.io/badge/matplotlib-3.4.3-green" /><br /><img src="https://img.shields.io/badge/fortran-90-purple" /><img src="https://img.shields.io/badge/gcc-9.2.0-purple" /><img src="https://img.shields.io/badge/lapack-3.9.0-purple" /><img src="https://img.shields.io/badge/blas-3.1.0-purple" /><img src="https://img.shields.io/badge/SDPA-7.3.9-purple" /></p> -->
 
 <p align="center">
-<img src="https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg" width="200" height="200" alt="In this repo we use neither 'therefore' nor 'furthermore'"/>
+<img src="https://i.kym-cdn.com/photos/images/original/001/545/361/502.jpg" width="250" height="250" alt="In this repo we use neither 'therefore' nor 'furthermore'"/>
 </p>
 <p align="center">
 In this repo we use neither 'therefore' nor 'furthermore'
@@ -63,6 +63,7 @@ simple EB BB84 protocol
 @author: Sebastiano Cocchi
 """
 from src import qkd
+import numpy as np
 
 # create simulation
 sim = qkd.QKD(dim_a=2, dim_b=2, n_of_signal_states=4,

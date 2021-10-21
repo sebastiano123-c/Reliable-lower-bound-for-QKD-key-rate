@@ -195,33 +195,80 @@ def depolarizing_channel(p, dim=2):
     """
     returns the Kraus representation of the depolaring channel with probability p
     """
+    # depolarization
+    depo_2d = [
+        np.sqrt(1-3/4*p)*np.array( pauli[0] ),
+        np.sqrt(p/4)*np.array( pauli[1] ),
+        np.sqrt(p/4)*np.array( pauli[2] ),
+        np.sqrt(p/4)*np.array( pauli[3] )
+    ]
+    depo_3d= [ 
+        np.sqrt(1-p)*np.eye(3),
+        np.sqrt(p/8)*Y,
+        np.sqrt(p/8)*Z,
+        np.sqrt(p/8)*Y@Y,
+        np.sqrt(p/8)*Y@Z,
+        np.sqrt(p/8)*Y@Y@Z,
+        np.sqrt(p/8)*Y@Z@Z,
+        np.sqrt(p/8)*Y@Y@Z@Z,
+        np.sqrt(p/8)*Z@Z
+    ]
     # initialize with the lower dimension
     if dim == 2:
         new_dim = 2
-        depo = [
-            np.sqrt(1-3/4*p)*np.array( pauli[0] ),
-            np.sqrt(p/4)*np.array( pauli[1] ),
-            np.sqrt(p/4)*np.array( pauli[2] ),
-            np.sqrt(p/4)*np.array( pauli[3] )
-        ]
+        depo = depo_2d 
     elif dim == 3:
         new_dim = 3
-        depo = [ 
-            np.sqrt(1-p)*np.eye(dim),
-            np.sqrt(p/8)*Y,
-            np.sqrt(p/8)*Z,
-            np.sqrt(p/8)*Y@Y,
-            np.sqrt(p/8)*Y@Z,
-            np.sqrt(p/8)*Y@Y@Z,
-            np.sqrt(p/8)*Y@Z@Z,
-            np.sqrt(p/8)*Y@Y@Z@Z,
-            np.sqrt(p/8)*Z@Z
-        ]
+        depo = depo_3d
+    elif dim == 4:
+        depo = []
+        for ii in depo_2d:
+            depo.append(np.kron(ii, ii))
+    elif dim == 6:
+        depo = []
+        for ii in depo_3d:
+            for jj in depo_2d:
+                depo.append(np.kron(ii, jj))
     else:
         print("depolarizing_channel:: dimension", dim," not yet support please try with dim = 2 or dim = 3")
         exit()
-
     return depo
+
+    # initialize with the lower dimension
+    # if dim in [2, 4, 8, 16]:
+    #     new_dim = 2
+    #     basis = depo_2d
+    # else:
+    #     new_dim = 3
+    #     basis = depo_3d
+   
+    # while(new_dim < dim):
+
+    #     new_dim   = new_dim*2  # space dimension increase is doubled
+    #     n_elements  = new_dim**2 # # of elements of a matrix basis is the square of the space dimension
+
+    #     # instantiate a new basis
+    #     temp = 1j*np.zeros([n_elements, new_dim, new_dim])
+
+    #     # create new basis with dimension doubled
+    #     for ii in range(len(basis)):
+    #         for jj in range(len(depo_2d)): 
+
+    #             # kron product
+    #             tmp = np.kron(basis[ii], depo_2d[jj])
+    #             if( abs(np.trace(tmp @ tmp)) !=0 ): # normalization)
+    #                 tmp = tmp / np.sqrt(np.trace(tmp @ tmp)) # normalization
+
+    #             #check for hermiticity
+    #             if(np.allclose(tmp, np.conj(tmp).T) == False): print("tmp ", ii, jj, "not hermitian.")
+
+    #             #check if is a Tr[G_mu G_mu]==1
+    #             if( abs(np.trace(tmp @ tmp) - 1.) >= 1e-8): print("Tr[tmp tmp] != 1", np.trace(tmp @ tmp))
+
+    #             temp[jj+(ii)*len(depo_2d)] = tmp
+
+    #     basis = temp
+    # return basis
 
 def coherent_state(alpha):
     """
@@ -643,6 +690,31 @@ class QKD:
             self.orth_set_ab
         """
         self.orth_set_ab = orth_set_of_observables_ab
+
+    def apply_eve_strategy(self, eve_kraus_operator):
+        rho_ab, sumkt = 0., 0.
+        is_kraus(eve_kraus_operator, "EVE")
+        # apply operators
+        for jj in eve_kraus_operator:
+            kraus_temp = np.kron( np.eye(self.da), jj)
+            rho_ab = rho_ab + kraus_temp @ self.rho_aa @ np.conj( kraus_temp ).T
+            sumkt = sumkt + np.conj( kraus_temp ).T @ kraus_temp
+        
+        # normalize
+        rho_ab = rho_ab / np.trace(rho_ab)
+
+        # check if it is physical
+        is_physical(rho_ab, 1e-8, "rho_eve_ab")
+    
+        # check the depolarization satisfy Kraus representation property
+        if( np.allclose( sumkt, np.eye(self.dtot)) == False): print("EVE is not kraus.", sumkt)
+
+        
+        # add variable
+        self.rho_aa = rho_ab
+
+        # print purity
+        # print("purity of rho_i     =", np.real(np.trace( rho_ab @ rho_ab )))
 
     def apply_quantum_channel(self, channel_kraus_operator):
         """
