@@ -1,9 +1,17 @@
 
 """
-EB BB84 decoy states protocol
+EB BB84 protocol with weak coherent pulses
 
 @author: Sebastiano Cocchi
+
+
+HAS BUG!
 """
+import os
+import sys
+# Append parent directory to import path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src import qkd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,12 +23,14 @@ import matplotlib.pyplot as plt
 # for ii in basis:
 #     povma.append( np.outer(ii, np.conj(ii)) )
 
-# decoy states
-decoy_basis  = np.eye(6)
+# decoy states basis
+decoy_basis = np.eye(6)
 
 # states
-#  Z basis
+# the vacuum
 vac        = decoy_basis[0] + np.zeros_like(decoy_basis[0])*1j  # |vac>_Z
+
+#  Z basis
 one_zero_z = decoy_basis[1] + np.zeros_like(decoy_basis[0])*1j  # |1,0>_Z
 two_zero_z = decoy_basis[2] + np.zeros_like(decoy_basis[0])*1j  # |2,0>_Z
 zero_one_z = decoy_basis[3] + np.zeros_like(decoy_basis[0])*1j  # |0,1>_Z
@@ -56,7 +66,7 @@ povmb = [
 # qber
 qber = np.linspace(0., 0.12, 6)
 
-for mu in [1e-2, 1e-1, 5e-1, 1, 5]:
+for mu in [0, 0.3, 0.6]:
     alpha = np.sqrt(mu)
 
     # weak coherent states
@@ -76,7 +86,7 @@ for mu in [1e-2, 1e-1, 5e-1, 1, 5]:
         list_states_b=decoy_states, list_of_prob_b=[0.25, 0.25, 0.25, 0.25],
         #povm_a=povma,
         povm_b=povmb,
-        simulation_name="BB84 decoy"
+        simulation_name="BB84 with weak coherent pulses"
     )
 
     th, pr, dl = [], [], []

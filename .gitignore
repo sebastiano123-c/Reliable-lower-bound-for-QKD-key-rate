@@ -39,10 +39,10 @@ bibliography
 /sdp.dat
 /sdp.dat-s
 /sdp.out
-/EB_BB84_eff_mismatch.py
-/EB_simple_BB84.py
-/PeM_trojan_horse_BB84.py
-/main_simple_BB84.py
-/simple_BB84.exe
-/main.exe
-/main.py
+test/EB_BB84_eff_mismatch.py
+test/EB_simple_BB84.py
+test/PeM_trojan_horse_BB84.py
+test/main_simple_BB84.py
+test/simple_BB84.exe
+test/main.exe
+main.exe

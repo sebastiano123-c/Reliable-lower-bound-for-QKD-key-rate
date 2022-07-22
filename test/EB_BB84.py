@@ -4,6 +4,12 @@ EB simple BB84
 
 @author: Sebastiano Cocchi
 """
+import os
+import sys
+# Append parent directory to import path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 from src import qkd
 import numpy as np
 import matplotlib.pyplot as plt
